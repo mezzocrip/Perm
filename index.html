@@ -229,7 +229,12 @@
 
                     <!-- ACTION BUTTONS GRID -->
                     <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/90 space-y-3">
-                        <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Actions & Importation</h3>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Actions & Importation</h3>
+                            <span id="db-count-badge" class="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                Base : 0 élève(s)
+                            </span>
+                        </div>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <!-- Import Excel / CSV Button -->
@@ -246,11 +251,19 @@
                             </button>
                         </div>
 
-                        <!-- Demo data loader -->
-                        <button onclick="loadDemoData()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 px-3 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition touch-btn">
-                            <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
-                            <span>Charger des élèves de démonstration</span>
-                        </button>
+                        <!-- Demo data & Reset DB loader buttons -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                            <button onclick="loadDemoData()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 px-3 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition touch-btn">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
+                                <span>Charger démo</span>
+                            </button>
+
+                            <!-- RESET STUDENT DATABASE BUTTON -->
+                            <button onclick="clearStudentDatabase()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200/90 px-3 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition touch-btn" title="Effacer tous les élèves importés dans la base de données">
+                                <i data-lucide="trash-2" class="w-4 h-4 text-rose-600"></i>
+                                <span>Effacer base élèves</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -324,7 +337,7 @@
                             <!-- Reset Current Session List -->
                             <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
                                 <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-                                <span>Vider</span>
+                                <span>Vider l'appel</span>
                             </button>
 
                             <!-- PRINT BUTTON (NATIVE A4 PORTRAIT) -->
@@ -515,6 +528,7 @@
             renderAedDropdown();
             renderSessionList();
             updateStats();
+            updateDbCountBadge();
             detectDeviceMode();
             lucide.createIcons();
 
@@ -605,10 +619,18 @@
 
         function saveStudentDatabase() {
             localStorage.setItem(STORAGE_DATABASE, JSON.stringify(studentDatabase));
+            updateDbCountBadge();
         }
 
         function saveSessionStudents() {
             localStorage.setItem(STORAGE_SESSION, JSON.stringify(sessionStudents));
+        }
+
+        function updateDbCountBadge() {
+            const badge = document.getElementById('db-count-badge');
+            if (badge) {
+                badge.textContent = `Base : ${studentDatabase.length} élève(s)`;
+            }
         }
 
         function handleSearchInput() {
@@ -1054,6 +1076,23 @@
 
             saveStudentDatabase();
             showToast(`Base de données chargée avec ${studentDatabase.length} élèves !`, 'info');
+        }
+
+        /* FUNCTION: CLEAR ENTIRE STUDENT DATABASE */
+        function clearStudentDatabase() {
+            if (studentDatabase.length === 0) {
+                showToast('La base de données d\'élèves est déjà vide.', 'info');
+                return;
+            }
+
+            const confirmClear = confirm(`Voulez-vous vraiment effacer les ${studentDatabase.length} élève(s) enregistrés dans la base de données ?\nCette action est irréversible.`);
+            
+            if (confirmClear) {
+                studentDatabase = [];
+                saveStudentDatabase();
+                hideAutocompleteDropdown();
+                showToast('La base de données des élèves a été réinitialisée.', 'error');
+            }
         }
 
         function resetCurrentSession() {
