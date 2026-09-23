@@ -10,6 +10,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS (Excel / CSV parsing) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- html2pdf.js (PDF generation) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts: Inter -->
@@ -71,7 +73,40 @@
             }
         }
 
-        /* Strict A4 Portrait Print Stylesheet */
+        /* Styles de la zone de rendu PDF & Impression */
+        .print-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-top: 15px !important;
+        }
+
+        .print-table th, .print-table td {
+            border: 1px solid #334155 !important;
+            padding: 8px 10px !important;
+            text-align: left !important;
+            font-size: 9.5pt !important;
+        }
+
+        .print-table th {
+            background-color: #f1f5f9 !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .print-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 8pt;
+            display: inline-block;
+            text-transform: uppercase;
+        }
+        .print-badge-perm { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .print-badge-excl { background-color: #ffe4e6; color: #9f1239; border: 1px solid #fca5a5; }
+        .print-badge-autre { background-color: #fef3c7; color: #92400e; border: 1px solid #fde047; }
+
         @media print {
             @page {
                 size: A4 portrait;
@@ -88,39 +123,6 @@
 
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-
-            .print-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                margin-top: 15px !important;
-            }
-
-            .print-table th, .print-table td {
-                border: 1px solid #334155 !important;
-                padding: 8px 10px !important;
-                text-align: left !important;
-                font-size: 9.5pt !important;
-            }
-
-            .print-table th {
-                background-color: #f1f5f9 !important;
-                font-weight: 800 !important;
-                color: #0f172a !important;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-
-            .print-badge {
-                padding: 3px 8px;
-                border-radius: 4px;
-                font-weight: 800;
-                font-size: 8pt;
-                display: inline-block;
-                text-transform: uppercase;
-            }
-            .print-badge-perm { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
-            .print-badge-excl { background-color: #ffe4e6; color: #9f1239; border: 1px solid #fca5a5; }
-            .print-badge-autre { background-color: #fef3c7; color: #92400e; border: 1px solid #fde047; }
         }
 
         .print-only { display: none; }
@@ -152,7 +154,7 @@
                                 <span>Mode PC</span>
                             </span>
                         </div>
-                        <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & impression A4</p>
+                        <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & export PDF</p>
                     </div>
                 </div>
 
@@ -301,7 +303,7 @@
 
                 </div>
 
-                <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & PRINT BAR) - lg:col-span-7 -->
+                <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & EXPORT BAR) - lg:col-span-7 -->
                 <div class="lg:col-span-7 space-y-4">
                     
                     <!-- SESSION LIST HEADER TOOLBAR -->
@@ -327,10 +329,10 @@
                                 <span>Vider</span>
                             </button>
 
-                            <!-- PRINT BUTTON (NATIVE A4 PORTRAIT) -->
-                            <button onclick="triggerPrint()" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-brand-600/20 active:scale-95 touch-btn">
-                                <i data-lucide="printer" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                                <span>Imprimer A4</span>
+                            <!-- EXPORT PDF BUTTON -->
+                            <button onclick="exportToPdf()" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-brand-600/20 active:scale-95 touch-btn">
+                                <i data-lucide="file-down" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                                <span>Exporter PDF</span>
                             </button>
                         </div>
                     </div>
@@ -435,14 +437,14 @@
         </div>
     </div>
 
-    <!-- PRINT ONLY CONTAINER (A4 FORMAT PORTRAIT STRICT) -->
+    <!-- PRINT/PDF ONLY CONTAINER -->
     <div id="print-zone" class="print-only print-container p-2">
         
-        <!-- HEADER IMPRESSION -->
+        <!-- HEADER EXPORT -->
         <div class="border-b-2 border-slate-900 pb-3 mb-4">
             <div class="flex justify-between items-start mb-2">
                 <div>
-                    <!-- EXIGENCE STRICTE DE TITRE: PERMANENCE DE (NOM AED) à (HEURE SANS MINUTES) -->
+                    <!-- TITRE: PERMANENCE DE (NOM AED) à (HEURE SANS MINUTES) -->
                     <h1 id="print-title-header" class="text-xl font-black text-slate-900 tracking-tight uppercase">
                         <!-- PERMANENCE DE [AED] à [XX]h -->
                     </h1>
@@ -456,7 +458,7 @@
                 </div>
             </div>
 
-            <!-- RESUME STATS IMPRESSION -->
+            <!-- RESUME STATS -->
             <div class="flex gap-6 mt-2 pt-2 border-t border-slate-200 text-xs font-medium">
                 <div>Effectif présent : <strong id="print-stat-total" class="text-slate-900">0</strong></div>
                 <div>Permanence normale : <strong id="print-stat-perm" class="text-emerald-800">0</strong></div>
@@ -465,7 +467,7 @@
             </div>
         </div>
 
-        <!-- TABLEAU COMPTE RENDU IMPRESSION -->
+        <!-- TABLEAU COMPTE RENDU -->
         <table class="print-table">
             <thead>
                 <tr>
@@ -547,7 +549,6 @@
             if (!badge) return;
 
             const width = window.innerWidth;
-            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
             if (width >= 1024) {
                 badge.innerHTML = `<i data-lucide="monitor" class="w-3.5 h-3.5"></i><span>Mode PC / Desktop</span>`;
@@ -764,7 +765,6 @@
                 showToast(`Ajouté : ${student.nom} ${student.prenom} (${student.classe})`, 'success');
             }
 
-            // Exigence : Effacement direct de la recherche & conservation du focus
             clearSearchInput();
         }
 
@@ -1077,7 +1077,8 @@
             document.getElementById('stat-autre').textContent = autre;
         }
 
-        function triggerPrint() {
+        /* FONCTION GENERATION ET EXPORT DU PDF */
+        function exportToPdf() {
             const now = new Date();
             
             // Format heure sans les minutes: 08h, 14h, etc.
@@ -1086,7 +1087,7 @@
 
             const aedName = selectedAed || 'L\'AED';
 
-            // EXIGENCE DE TITRE : PERMANENCE DE (nom de L’AED) à (heure sans minutes)
+            // TITRE : PERMANENCE DE (nom de L’AED) à (heure sans minutes)
             const requiredTitle = `PERMANENCE DE ${aedName.toUpperCase()} à ${hourFormatted}`;
 
             document.getElementById('print-title-header').textContent = requiredTitle;
@@ -1129,9 +1130,49 @@
                 });
             }
 
-            setTimeout(() => {
-                window.print();
-            }, 150);
+            // Préparation du conteneur pour le rendu PDF
+            const printZone = document.getElementById('print-zone');
+            
+            // Affichage temporaire hors écran
+            printZone.style.display = 'block';
+            printZone.style.position = 'absolute';
+            printZone.style.left = '-9999px';
+            printZone.style.top = '0px';
+            printZone.style.width = '750px';
+            printZone.style.backgroundColor = '#ffffff';
+
+            const cleanAed = aedName.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const pdfFilename = `Permanence_${cleanAed}_${hourFormatted}.pdf`;
+
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     pdfFilename,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            showToast('Génération du fichier PDF en cours...', 'info');
+
+            html2pdf().set(opt).from(printZone).save().then(() => {
+                // Rétablissement des styles initiaux
+                printZone.style.display = '';
+                printZone.style.position = '';
+                printZone.style.left = '';
+                printZone.style.top = '';
+                printZone.style.width = '';
+                printZone.style.backgroundColor = '';
+                showToast('PDF télécharge avec succès !', 'success');
+            }).catch(err => {
+                console.error('Erreur PDF:', err);
+                printZone.style.display = '';
+                printZone.style.position = '';
+                printZone.style.left = '';
+                printZone.style.top = '';
+                printZone.style.width = '';
+                printZone.style.backgroundColor = '';
+                showToast('Erreur lors de la génération du PDF', 'error');
+            });
         }
 
         function capitalizeFirstLetter(str) {
