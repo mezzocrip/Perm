@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Permanence - Appel Multi-Écran</title>
+    <title>Permanence - Appel & Export PDF Stylé</title>
     <link rel="apple-touch-icon" href="./Logo.png">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS (Excel / CSV parsing) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- html2pdf.js (PDF generation) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf.js (Génération PDF stylée) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,19 +50,19 @@
     </script>
 
     <style>
-        /* Modern scrollbar styling */
+        /* Scrollbar moderne */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* Highlight autocomplete selected item */
+        /* Highlight autocomplétion */
         .autocomplete-selected {
             background-color: #f0fdf4 !important;
             border-left: 4px solid #16a34a !important;
         }
 
-        /* Touch optimization for iPad and Mobile targets */
+        /* Optimisation tactile pour iPad et Mobiles */
         @media (max-width: 1023px) {
             button, select, input, .touch-target {
                 min-height: 48px;
@@ -73,72 +73,69 @@
             }
         }
 
-        /* Styles de la zone de rendu PDF & Impression */
-        .print-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            margin-top: 15px !important;
+        /* Zone invisible hors-champ pour le rendu HTML -> PDF parfait */
+        #pdf-template-wrapper {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 210mm;
         }
 
-        .print-table th, .print-table td {
-            border: 1px solid #334155 !important;
-            padding: 8px 10px !important;
-            text-align: left !important;
-            font-size: 9.5pt !important;
+        /* Styles spécifiques pour la mise en page PDF */
+        .pdf-page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            background: #ffffff;
+            font-family: 'Inter', sans-serif;
+            color: #0f172a;
+            box-sizing: border-box;
         }
 
-        .print-table th {
-            background-color: #f1f5f9 !important;
-            font-weight: 800 !important;
-            color: #0f172a !important;
+        .pdf-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 15px;
+        }
+
+        .pdf-table th {
+            background-color: #0f172a;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            padding: 10px 12px;
+            text-align: left;
         }
 
-        .print-badge {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-weight: 800;
-            font-size: 8pt;
-            display: inline-block;
-            text-transform: uppercase;
-        }
-        .print-badge-perm { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
-        .print-badge-excl { background-color: #ffe4e6; color: #9f1239; border: 1px solid #fca5a5; }
-        .print-badge-autre { background-color: #fef3c7; color: #92400e; border: 1px solid #fde047; }
+        .pdf-table th:first-child { border-top-left-radius: 8px; }
+        .pdf-table th:last-child { border-top-right-radius: 8px; }
 
-        @media print {
-            @page {
-                size: A4 portrait;
-                margin: 12mm 12mm 12mm 12mm;
-            }
-
-            body {
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                font-size: 10pt !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
+        .pdf-table td {
+            padding: 10px 12px;
+            font-size: 11px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
         }
 
-        .print-only { display: none; }
+        .pdf-table tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
     </style>
 </head>
 <body class="h-full text-slate-800 antialiased selection:bg-brand-500 selection:text-white flex flex-col">
 
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- MAIN APP LAYOUT CONTAINER -->
-    <div class="min-h-full flex flex-col no-print flex-1">
+    <!-- CONTENEUR PRINCIPAL -->
+    <div class="min-h-full flex flex-col flex-1">
         
         <header class="bg-slate-900 text-white shadow-xl sticky top-0 z-30 border-b border-slate-800">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
                 
-                <!-- Logo & App Title -->
+                <!-- Logo & Titre App -->
                 <div class="flex items-center space-x-3">
                     <div class="bg-brand-500 text-slate-950 p-2.5 rounded-2xl shadow-lg font-bold">
                         <i data-lucide="clipboard-check" class="w-6 h-6"></i>
@@ -148,17 +145,16 @@
                             <h1 class="text-xl font-black tracking-tight text-white">
                                 PERMANENCE
                             </h1>
-                            <!-- Device Mode Badge (PC / iPad / Mobile) -->
                             <span id="device-mode-badge" class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-800 text-brand-500 border border-brand-500/30 flex items-center gap-1 shadow-inner">
                                 <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
                                 <span>Mode PC</span>
                             </span>
                         </div>
-                        <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & export PDF</p>
+                        <p class="text-xs text-slate-400 font-medium">Saisie d'appel & Export PDF haute définition</p>
                     </div>
                 </div>
 
-                <!-- AED Selection Controls -->
+                <!-- Contrôles AED -->
                 <div class="flex items-center gap-2 bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700/80 w-full sm:w-auto justify-between sm:justify-start">
                     <div class="flex items-center gap-2 px-2 text-slate-300">
                         <i data-lucide="user-check" class="w-4 h-4 text-brand-500"></i>
@@ -166,7 +162,7 @@
                     </div>
                     
                     <select id="aed-select" class="bg-slate-900 text-white font-bold text-sm rounded-xl px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer flex-1 sm:flex-initial">
-                        <!-- Dynamic options via JS -->
+                        <!-- Rempli dynamiquement -->
                     </select>
 
                     <button onclick="openModal('modal-aed')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm hover:shadow-slate-700/50 touch-btn" title="Ajouter un nouvel AED">
@@ -179,13 +175,13 @@
 
         <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
 
-            <!-- RESPONSIVE DASHBOARD LAYOUT -->
+            <!-- LAYOUT DASHBOARD -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
                 
-                <!-- LEFT COLUMN / PANEL (SEARCH, ACTIONS & KPIs) - lg:col-span-5 -->
+                <!-- COLONNE GAUCHE (RECHERCHE, ACTIONS & KPIS) -->
                 <div class="lg:col-span-5 space-y-5 sm:space-y-6">
                     
-                    <!-- SEARCH & AUTOCOMPLETE CARD -->
+                    <!-- CARTE RECHERCHE & AUTOCOMPLÉTION -->
                     <div class="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200/90 space-y-3 relative">
                         <label for="search-input" class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                             <span class="flex items-center gap-1.5 text-slate-700">
@@ -197,7 +193,7 @@
                             </span>
                         </label>
 
-                        <!-- SEARCH INPUT FIELD -->
+                        <!-- CHAMP DE RECHERCHE -->
                         <div class="relative w-full">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-brand-600">
                                 <i data-lucide="user-search" class="w-5 h-5"></i>
@@ -211,52 +207,47 @@
                                    onfocus="handleSearchInput()"
                                    class="w-full pl-11 pr-11 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-base sm:text-lg font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 transition shadow-inner">
 
-                            <!-- Clear Search Input Button -->
                             <button id="clear-search-btn" onclick="clearSearchInput()" class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 touch-target">
                                 <i data-lucide="x-circle" class="w-5 h-5"></i>
                             </button>
 
-                            <!-- MENU DÉROULANT / DROPDOWN AUTOCLOSE -->
+                            <!-- DROPDOWN AUTOCOMPLÉTION -->
                             <div id="autocomplete-dropdown" 
                                  class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 transition-all">
-                                <!-- Dynamically filled suggestions -->
                             </div>
                         </div>
 
                         <p class="text-xs text-slate-400 flex items-center gap-1 pt-1">
                             <i data-lucide="corner-down-left" class="w-3.5 h-3.5 text-brand-600 shrink-0"></i>
-                            <span>Cliquez ou tapez <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">Entrée</kbd> pour ajouter à l'appel. Le champ s'effacera immédiatement.</span>
+                            <span>Cliquez ou tapez <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">Entrée</kbd> pour ajouter à l'appel.</span>
                         </p>
                     </div>
 
-                    <!-- ACTION BUTTONS GRID -->
+                    <!-- BOUTONS D'ACTION & IMPORT -->
                     <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/90 space-y-3">
                         <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Actions & Importation</h3>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            <!-- Import Excel / CSV Button -->
                             <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-sm hover:shadow-indigo-200 active:scale-95 touch-btn">
                                 <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                                 <span>Importer Excel / CSV</span>
                                 <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
                             </label>
 
-                            <!-- Add Unlisted Student Button -->
                             <button onclick="openModal('modal-student')" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm active:scale-95 touch-btn">
                                 <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
                                 <span>+ Élève (Hors-liste)</span>
                             </button>
                         </div>
 
-                        <!-- Demo data loader -->
                         <button onclick="loadDemoData()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 px-3 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition touch-btn">
                             <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
                             <span>Charger des élèves de démonstration</span>
                         </button>
                     </div>
 
+                    <!-- CARTES STATISTIQUES (KPIs) -->
                     <div class="grid grid-cols-2 gap-3">
-                        <!-- KPI 1: Total Appel -->
                         <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
                             <div>
                                 <p class="text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Présents</p>
@@ -267,7 +258,6 @@
                             </div>
                         </div>
 
-                        <!-- KPI 2: Statut Permanence -->
                         <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
                             <div>
                                 <p class="text-[10px] sm:text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider">Permanence</p>
@@ -278,7 +268,6 @@
                             </div>
                         </div>
 
-                        <!-- KPI 3: Exclusion / Retenue -->
                         <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
                             <div>
                                 <p class="text-[10px] sm:text-[11px] font-extrabold text-rose-600 uppercase tracking-wider">Exclusions</p>
@@ -289,7 +278,6 @@
                             </div>
                         </div>
 
-                        <!-- KPI 4: Autre motif -->
                         <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
                             <div>
                                 <p class="text-[10px] sm:text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">Autres</p>
@@ -303,10 +291,9 @@
 
                 </div>
 
-                <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & EXPORT BAR) - lg:col-span-7 -->
+                <!-- COLONNE DROITE (FEUILLE D'APPEL EN COURS & BOUTON EXPORT PDF) -->
                 <div class="lg:col-span-7 space-y-4">
                     
-                    <!-- SESSION LIST HEADER TOOLBAR -->
                     <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/90 flex flex-wrap items-center justify-between gap-3">
                         <div class="flex items-center gap-2">
                             <div class="bg-brand-50 p-2 rounded-xl text-brand-600">
@@ -323,25 +310,24 @@
                         </div>
 
                         <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-                            <!-- Reset Current Session List -->
                             <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
                                 <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                                 <span>Vider</span>
                             </button>
 
-                            <!-- EXPORT PDF BUTTON -->
-                            <button onclick="exportToPdf()" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-brand-600/20 active:scale-95 touch-btn">
+                            <!-- BOUTON EXPORT PDF STYLÉ -->
+                            <button id="export-pdf-btn" onclick="exportStyledPDF()" class="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-lg shadow-emerald-600/20 active:scale-95 touch-btn">
                                 <i data-lucide="file-down" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                                <span>Exporter PDF</span>
+                                <span id="export-btn-label">Exporter en PDF</span>
                             </button>
                         </div>
                     </div>
 
                     <div id="session-list-container" class="space-y-2.5">
-                        <!-- Dynamic Student Cards Rendered via JS -->
+                        <!-- Élèves injectés via JS -->
                     </div>
 
-                    <!-- EMPTY SESSION STATE -->
+                    <!-- ÉTAT VIDE -->
                     <div id="empty-session-state" class="bg-white rounded-3xl p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 space-y-3">
                         <div class="mx-auto w-14 h-14 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center">
                             <i data-lucide="user-check" class="w-7 h-7"></i>
@@ -359,8 +345,8 @@
         </main>
     </div>
 
-    <!-- MODAL: ADD AED -->
-    <div id="modal-aed" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+    <!-- MODAL: AJOUTER UN AED -->
+    <div id="modal-aed" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden transform transition-all">
             <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
                 <h3 class="font-bold text-base flex items-center gap-2">
@@ -389,8 +375,8 @@
         </div>
     </div>
 
-    <!-- MODAL: ADD UNLISTED STUDENT (HORS-LISTE) -->
-    <div id="modal-student" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+    <!-- MODAL: AJOUTER UN ÉLÈVE HORS-LISTE -->
+    <div id="modal-student" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden transform transition-all">
             <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
                 <h3 class="font-bold text-base flex items-center gap-2">
@@ -437,62 +423,82 @@
         </div>
     </div>
 
-    <!-- PRINT/PDF ONLY CONTAINER -->
-    <div id="print-zone" class="print-only print-container p-2">
-        
-        <!-- HEADER EXPORT -->
-        <div class="border-b-2 border-slate-900 pb-3 mb-4">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <!-- TITRE: PERMANENCE DE (NOM AED) à (HEURE SANS MINUTES) -->
-                    <h1 id="print-title-header" class="text-xl font-black text-slate-900 tracking-tight uppercase">
-                        <!-- PERMANENCE DE [AED] à [XX]h -->
-                    </h1>
-                    <p class="text-xs text-slate-600 mt-1 font-semibold">
-                        Vie Scolaire — Registre officiel d'appel de la permanence
-                    </p>
+    <!-- MODÈLE HTML MASQUÉ DÉDIÉ À LA GÉNÉRATION DU PDF STYLÉ -->
+    <div id="pdf-template-wrapper">
+        <div id="pdf-template" class="pdf-page">
+            
+            <!-- EN-TÊTE DESIGN DU DOCUMENT PDF -->
+            <div style="border-bottom: 3px solid #16a34a; padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <!-- Exigence Titre : PERMANENCE DE [AED] à [XX]h -->
+                        <h1 id="pdf-title-header" style="font-size: 18px; font-weight: 900; color: #0f172a; text-transform: uppercase; margin: 0; letter-spacing: -0.02em;">
+                            <!-- Titre dynamique -->
+                        </h1>
+                        <div style="font-size: 11px; font-weight: 600; color: #16a34a; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">
+                            VIE SCOLAIRE — REGISTRE OFFICIEL D'APPEL DE LA PERMANENCE
+                        </div>
+                    </div>
+                    <div style="text-align: right; font-size: 10px; color: #475569; line-height: 1.4;">
+                        <div><strong>Date :</strong> <span id="pdf-date"></span></div>
+                        <div><strong>Édition :</strong> <span id="pdf-full-time"></span></div>
+                    </div>
                 </div>
-                <div class="text-right text-xs text-slate-700">
-                    <p><strong>Date :</strong> <span id="print-date"></span></p>
-                    <p><strong>Heure édition :</strong> <span id="print-full-time"></span></p>
+            </div>
+
+            <!-- CARTES RECAPITULATIVES / STATISTIQUES STYLISÉES -->
+            <div style="display: flex; gap: 10px; margin-bottom: 18px;">
+                <div style="flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase;">Effectif Total</div>
+                    <div id="pdf-stat-total" style="font-size: 16px; font-weight: 900; color: #0f172a; margin-top: 2px;">0</div>
+                </div>
+                <div style="flex: 1; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 9px; font-weight: 800; color: #15803d; text-transform: uppercase;">Permanence</div>
+                    <div id="pdf-stat-perm" style="font-size: 16px; font-weight: 900; color: #166534; margin-top: 2px;">0</div>
+                </div>
+                <div style="flex: 1; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 9px; font-weight: 800; color: #be123c; text-transform: uppercase;">Exclusions</div>
+                    <div id="pdf-stat-excl" style="font-size: 16px; font-weight: 900; color: #9f1239; margin-top: 2px;">0</div>
+                </div>
+                <div style="flex: 1; background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 9px; font-weight: 800; color: #b45309; text-transform: uppercase;">Autres Motifs</div>
+                    <div id="pdf-stat-autre" style="font-size: 16px; font-weight: 900; color: #92400e; margin-top: 2px;">0</div>
                 </div>
             </div>
 
-            <!-- RESUME STATS -->
-            <div class="flex gap-6 mt-2 pt-2 border-t border-slate-200 text-xs font-medium">
-                <div>Effectif présent : <strong id="print-stat-total" class="text-slate-900">0</strong></div>
-                <div>Permanence normale : <strong id="print-stat-perm" class="text-emerald-800">0</strong></div>
-                <div>Exclusions : <strong id="print-stat-excl" class="text-rose-800">0</strong></div>
-                <div>Autres : <strong id="print-stat-autre" class="text-amber-800">0</strong></div>
-            </div>
-        </div>
+            <!-- TABLEAU DES ÉLÈVES DESIGN -->
+            <table class="pdf-table">
+                <thead>
+                    <tr>
+                        <th style="width: 8%; text-align: center;">N°</th>
+                        <th style="width: 48%;">ÉLÈVE (NOM PRÉNOM)</th>
+                        <th style="width: 14%;">CLASSE</th>
+                        <th style="width: 18%;">STATUT / MOTIF</th>
+                        <th style="width: 12%; text-align: center;">PRÉSENCE</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf-table-body">
+                    <!-- Injection dynamique -->
+                </tbody>
+            </table>
 
-        <!-- TABLEAU COMPTE RENDU -->
-        <table class="print-table">
-            <thead>
-                <tr>
-                    <th style="width: 6%;">N°</th>
-                    <th style="width: 50%;">NOM PRÉNOM</th>
-                    <th style="width: 14%;">CLASSE</th>
-                    <th style="width: 20%;">MOTIF / STATUT</th>
-                    <th style="width: 10%; text-align: center;">PRÉSENCE</th>
-                </tr>
-            </thead>
-            <tbody id="print-table-body">
-                <!-- Injection JS -->
-            </tbody>
-        </table>
+            <!-- BLOC SIGNATURES EN BAS DE PAGE -->
+            <div style="margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; gap: 20px;">
+                <div style="flex: 1;">
+                    <p style="font-size: 10px; font-weight: 800; color: #0f172a; margin-bottom: 35px;">Signature de l'AED Responsable :</p>
+                    <p id="pdf-signature-aed" style="font-size: 11px; font-weight: 700; color: #334155; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; margin: 0;"></p>
+                </div>
+                <div style="flex: 1;">
+                    <p style="font-size: 10px; font-weight: 800; color: #0f172a; margin-bottom: 35px;">Visa du CPE / Direction :</p>
+                    <div style="border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;"></div>
+                </div>
+            </div>
 
-        <!-- ZONE DE SIGNATURES -->
-        <div class="mt-12 pt-4 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs">
-            <div>
-                <p class="font-bold text-slate-800 mb-10">Signature de l'AED responsable :</p>
-                <p id="print-signature-aed" class="text-slate-600 border-b border-dashed border-slate-400 pb-1 font-semibold"></p>
+            <!-- PIED DE PAGE -->
+            <div style="margin-top: 30px; text-align: center; font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">
+                Document généré automatiquement — Application Permanence Vie Scolaire
             </div>
-            <div>
-                <p class="font-bold text-slate-800 mb-10">Visa du CPE / Direction :</p>
-                <div class="border-b border-dashed border-slate-400 pb-1"></div>
-            </div>
+
         </div>
     </div>
 
@@ -506,11 +512,11 @@
         /* APPLICATION STATE */
         let aeds = [];
         let selectedAed = '';
-        let studentDatabase = []; // Tous les élèves du collège/lycée (base de recherche)
-        let sessionStudents = [];  // Élèves présents dans la permanence actuelle
+        let studentDatabase = [];
+        let sessionStudents = [];
         
-        let searchMatches = [];    // Résultats filtrés pour la recherche
-        let selectedDropdownIndex = -1; // Indice de sélection au clavier dans le dropdown
+        let searchMatches = [];
+        let selectedDropdownIndex = -1;
 
         window.onload = function() {
             loadStoredData();
@@ -520,10 +526,8 @@
             detectDeviceMode();
             lucide.createIcons();
 
-            // Detect window resize to update device indicator
             window.addEventListener('resize', detectDeviceMode);
 
-            // Close dropdown on click outside
             document.addEventListener('click', function(e) {
                 const searchContainer = document.getElementById('search-input')?.closest('.relative');
                 if (searchContainer && !searchContainer.contains(e.target)) {
@@ -531,7 +535,6 @@
                 }
             });
 
-            // Keyboard shortcut (Ctrl + K or /) to focus search box
             document.addEventListener('keydown', function(e) {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                     e.preventDefault();
@@ -562,7 +565,6 @@
         }
 
         function loadStoredData() {
-            // 1. AEDs
             const storedAeds = localStorage.getItem(STORAGE_AEDS);
             if (storedAeds) {
                 aeds = JSON.parse(storedAeds);
@@ -571,7 +573,6 @@
                 saveAeds();
             }
 
-            // Selected AED
             const storedSelectedAed = localStorage.getItem(STORAGE_SELECTED_AED);
             if (storedSelectedAed && aeds.includes(storedSelectedAed)) {
                 selectedAed = storedSelectedAed;
@@ -579,21 +580,11 @@
                 selectedAed = aeds[0] || 'AED Général';
             }
 
-            // 2. Database globale d'élèves
             const storedDb = localStorage.getItem(STORAGE_DATABASE);
-            if (storedDb) {
-                studentDatabase = JSON.parse(storedDb);
-            } else {
-                studentDatabase = [];
-            }
+            studentDatabase = storedDb ? JSON.parse(storedDb) : [];
 
-            // 3. Élèves de la session en cours
             const storedSession = localStorage.getItem(STORAGE_SESSION);
-            if (storedSession) {
-                sessionStudents = JSON.parse(storedSession);
-            } else {
-                sessionStudents = [];
-            }
+            sessionStudents = storedSession ? JSON.parse(storedSession) : [];
         }
 
         function saveAeds() {
@@ -625,12 +616,11 @@
                 return;
             }
 
-            // Filtrage dans la base globale par Nom, Prénom ou Classe
             searchMatches = studentDatabase.filter(s => {
                 const fullStr = `${s.nom} ${s.prenom} ${s.classe}`.toLowerCase();
                 const reverseStr = `${s.prenom} ${s.nom} ${s.classe}`.toLowerCase();
                 return fullStr.includes(query) || reverseStr.includes(query);
-            }).slice(0, 10); // Max 10 résultats
+            }).slice(0, 10);
 
             selectedDropdownIndex = -1;
             renderAutocompleteDropdown(searchMatches, query);
@@ -658,7 +648,6 @@
                 const item = document.createElement('div');
                 item.className = `p-3.5 cursor-pointer flex items-center justify-between hover:bg-brand-50/80 transition ${index === selectedDropdownIndex ? 'autocomplete-selected' : ''}`;
                 
-                // Format exigé: NOM Prénom Classe
                 item.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -821,7 +810,6 @@
 
                 card.className = `p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 shadow-sm hover:shadow-md ${borderBgClass}`;
 
-                // Status Toggle Button
                 let statusButtonHTML = '';
                 if (student.status === 'Permanence') {
                     statusButtonHTML = `
@@ -849,7 +837,6 @@
                     `;
                 }
 
-                // Format: NOM Prénom Classe
                 card.innerHTML = `
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                         <div class="w-10 h-10 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
@@ -1077,101 +1064,95 @@
             document.getElementById('stat-autre').textContent = autre;
         }
 
-        /* FONCTION GENERATION ET EXPORT DU PDF */
-        function exportToPdf() {
-            const now = new Date();
+        /* FONCTION D'EXPORTATION EN PDF STYLÉ AVEC HTML2PDF */
+        function exportStyledPDF() {
+            if (sessionStudents.length === 0) {
+                showToast('Aucun élève à l\'appel. Ajoutez au moins un élève avant d\'exporter.', 'error');
+                return;
+            }
+
+            const exportBtn = document.getElementById('export-pdf-btn');
+            const btnLabel = document.getElementById('export-btn-label');
             
-            // Format heure sans les minutes: 08h, 14h, etc.
+            // Animation chargement du bouton
+            exportBtn.disabled = true;
+            btnLabel.textContent = 'Génération du PDF...';
+
+            showToast('Préparation du document PDF...', 'info');
+
+            const now = new Date();
             const currentHourNum = now.getHours();
             const hourFormatted = currentHourNum.toString().padStart(2, '0') + 'h';
-
             const aedName = selectedAed || 'L\'AED';
 
-            // TITRE : PERMANENCE DE (nom de L’AED) à (heure sans minutes)
+            // Titre exact requis : PERMANENCE DE [AED] à [XX]h
             const requiredTitle = `PERMANENCE DE ${aedName.toUpperCase()} à ${hourFormatted}`;
 
-            document.getElementById('print-title-header').textContent = requiredTitle;
-            document.getElementById('print-date').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('print-full-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            // 1. Remplissage du modèle masqué
+            document.getElementById('pdf-title-header').textContent = requiredTitle;
+            document.getElementById('pdf-date').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('pdf-full-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
             const total = sessionStudents.length;
             const perm = sessionStudents.filter(s => s.status === 'Permanence').length;
             const excl = sessionStudents.filter(s => s.status === 'Exclusion').length;
             const autre = sessionStudents.filter(s => s.status === 'Autre').length;
 
-            document.getElementById('print-stat-total').textContent = total;
-            document.getElementById('print-stat-perm').textContent = perm;
-            document.getElementById('print-stat-excl').textContent = excl;
-            document.getElementById('print-stat-autre').textContent = autre;
-            document.getElementById('print-signature-aed').textContent = aedName;
+            document.getElementById('pdf-stat-total').textContent = total;
+            document.getElementById('pdf-stat-perm').textContent = perm;
+            document.getElementById('pdf-stat-excl').textContent = excl;
+            document.getElementById('pdf-stat-autre').textContent = autre;
+            document.getElementById('pdf-signature-aed').textContent = aedName;
 
-            // Remplir tableau
-            const printTbody = document.getElementById('print-table-body');
-            printTbody.innerHTML = '';
+            // Remplir le tableau
+            const pdfTbody = document.getElementById('pdf-table-body');
+            pdfTbody.innerHTML = '';
 
-            if (sessionStudents.length === 0) {
-                printTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 25px; color:#64748b;">Aucun élève enregistré lors de cet appel.</td></tr>`;
-            } else {
-                sessionStudents.forEach((s, idx) => {
-                    const tr = document.createElement('tr');
-                    
-                    let badgeClass = 'print-badge-perm';
-                    if (s.status === 'Exclusion') badgeClass = 'print-badge-excl';
-                    if (s.status === 'Autre') badgeClass = 'print-badge-autre';
+            sessionStudents.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                
+                let badgeStyle = 'background-color: #dcfce7; color: #166534; border: 1px solid #86efac;';
+                if (s.status === 'Exclusion') badgeStyle = 'background-color: #ffe4e6; color: #9f1239; border: 1px solid #fca5a5;';
+                if (s.status === 'Autre') badgeStyle = 'background-color: #fef3c7; color: #92400e; border: 1px solid #fde047;';
 
-                    tr.innerHTML = `
-                        <td style="text-align: center;">${idx + 1}</td>
-                        <td><strong>${escapeHtml(s.nom)}</strong> ${escapeHtml(s.prenom)}</td>
-                        <td><strong>${escapeHtml(s.classe)}</strong></td>
-                        <td><span class="print-badge ${badgeClass}">${escapeHtml(s.status)}</span></td>
-                        <td style="text-align: center;"><b>PRÉSENT</b></td>
-                    `;
-                    printTbody.appendChild(tr);
-                });
-            }
+                tr.innerHTML = `
+                    <td style="text-align: center; font-weight: 800; color: #64748b;">${idx + 1}</td>
+                    <td style="font-weight: 700; color: #0f172a;"><span style="text-transform: uppercase;">${escapeHtml(s.nom)}</span> ${escapeHtml(s.prenom)}</td>
+                    <td><strong style="background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${escapeHtml(s.classe)}</strong></td>
+                    <td>
+                        <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 800; text-transform: uppercase; ${badgeStyle}">
+                            ${escapeHtml(s.status)}
+                        </span>
+                    </td>
+                    <td style="text-align: center; font-weight: 800; color: #16a34a; font-size: 10px;">PRÉSENT</td>
+                `;
+                pdfTbody.appendChild(tr);
+            });
 
-            // Préparation du conteneur pour le rendu PDF
-            const printZone = document.getElementById('print-zone');
-            
-            // Affichage temporaire hors écran
-            printZone.style.display = 'block';
-            printZone.style.position = 'absolute';
-            printZone.style.left = '-9999px';
-            printZone.style.top = '0px';
-            printZone.style.width = '750px';
-            printZone.style.backgroundColor = '#ffffff';
-
-            const cleanAed = aedName.replace(/[^a-zA-Z0-9_-]/g, '_');
-            const pdfFilename = `Permanence_${cleanAed}_${hourFormatted}.pdf`;
+            // 2. Options de génération PDF A4 de haute qualité
+            const element = document.getElementById('pdf-template');
+            const cleanAedName = aedName.replace(/[^a-zA-Z0-9]/g, '_');
+            const dateISO = now.toISOString().split('T')[0];
+            const fileName = `Permanence_${cleanAedName}_${hourFormatted}_${dateISO}.pdf`;
 
             const opt = {
-                margin:       [10, 10, 10, 10],
-                filename:     pdfFilename,
+                margin:       0,
+                filename:     fileName,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            showToast('Génération du fichier PDF en cours...', 'info');
-
-            html2pdf().set(opt).from(printZone).save().then(() => {
-                // Rétablissement des styles initiaux
-                printZone.style.display = '';
-                printZone.style.position = '';
-                printZone.style.left = '';
-                printZone.style.top = '';
-                printZone.style.width = '';
-                printZone.style.backgroundColor = '';
-                showToast('PDF télécharge avec succès !', 'success');
-            }).catch(err => {
-                console.error('Erreur PDF:', err);
-                printZone.style.display = '';
-                printZone.style.position = '';
-                printZone.style.left = '';
-                printZone.style.top = '';
-                printZone.style.width = '';
-                printZone.style.backgroundColor = '';
-                showToast('Erreur lors de la génération du PDF', 'error');
+            // 3. Exécution du téléchargement PDF
+            html2pdf().set(opt).from(element).save().then(() => {
+                exportBtn.disabled = false;
+                btnLabel.textContent = 'Exporter en PDF';
+                showToast('Téléchargement du PDF réussi !', 'success');
+            }).catch((err) => {
+                console.error(err);
+                exportBtn.disabled = false;
+                btnLabel.textContent = 'Exporter en PDF';
+                showToast('Erreur lors de la création du PDF.', 'error');
             });
         }
 
