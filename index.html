@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestion de Permanence - Appel Multi-Écran</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (Excel / CSV parsing) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    },
+                    screens: {
+                        'ipad-portrait': {'raw': '(min-width: 768px) and (max-width: 1023px) and (orientation: portrait)'},
+                        'ipad-landscape': {'raw': '(min-width: 768px) and (max-width: 1023px) and (orientation: landscape)'},
+                        'tablet': '768px',
+                        'desktop': '1024px',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Modern scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Highlight autocomplete selected item */
+        .autocomplete-selected {
+            background-color: #f0fdf4 !important;
+            border-left: 4px solid #16a34a !important;
+        }
+
+        /* Touch optimization for iPad and Mobile targets */
+        @media (max-width: 1023px) {
+            button, select, input, .touch-target {
+                min-height: 48px;
+            }
+            .touch-btn {
+                padding-top: 0.75rem !important;
+                padding-bottom: 0.75rem !important;
+            }
+        }
+
+        /* Strict A4 Portrait Print Stylesheet */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 12mm 12mm 12mm 12mm;
+            }
+
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                font-size: 10pt !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+
+            .print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin-top: 15px !important;
+            }
+
+            .print-table th, .print-table td {
+                border: 1px solid #334155 !important;
+                padding: 8px 10px !important;
+                text-align: left !important;
+                font-size: 9.5pt !important;
+            }
+
+            .print-table th {
+                background-color: #f1f5f9 !important;
+                font-weight: 800 !important;
+                color: #0f172a !important;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .print-badge {
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-weight: 800;
+                font-size: 8pt;
+                display: inline-block;
+                text-transform: uppercase;
+            }
+            .print-badge-perm { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+            .print-badge-excl { background-color: #ffe4e6; color: #9f1239; border: 1px solid #fca5a5; }
+            .print-badge-autre { background-color: #fef3c7; color: #92400e; border: 1px solid #fde047; }
+        }
+
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased selection:bg-brand-500 selection:text-white flex flex-col">
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+    <!-- MAIN APP LAYOUT CONTAINER -->
+    <div class="min-h-full flex flex-col no-print flex-1">
+        
+        <header class="bg-slate-900 text-white shadow-xl sticky top-0 z-30 border-b border-slate-800">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+                
+                <!-- Logo & App Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-500 text-slate-950 p-2.5 rounded-2xl shadow-lg font-bold">
+                        <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h1 class="text-xl font-black tracking-tight text-white">
+                                PERMANENCE
+                            </h1>
+                            <!-- Device Mode Badge (PC / iPad / Mobile) -->
+                            <span id="device-mode-badge" class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-800 text-brand-500 border border-brand-500/30 flex items-center gap-1 shadow-inner">
+                                <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
+                                <span>Mode PC</span>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & impression A4</p>
+                    </div>
+                </div>
+
+                <!-- AED Selection Controls -->
+                <div class="flex items-center gap-2 bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700/80 w-full sm:w-auto justify-between sm:justify-start">
+                    <div class="flex items-center gap-2 px-2 text-slate-300">
+                        <i data-lucide="user-check" class="w-4 h-4 text-brand-500"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider">AED :</span>
+                    </div>
+                    
+                    <select id="aed-select" class="bg-slate-900 text-white font-bold text-sm rounded-xl px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer flex-1 sm:flex-initial">
+                        <!-- Dynamic options via JS -->
+                    </select>
+
+                    <button onclick="openModal('modal-aed')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm hover:shadow-slate-700/50 touch-btn" title="Ajouter un nouvel AED">
+                        <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
+                        <span>+ AED</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
+
+            <!-- RESPONSIVE DASHBOARD LAYOUT -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
+                
+                <!-- LEFT COLUMN / PANEL (SEARCH, ACTIONS & KPIs) - lg:col-span-5 -->
+                <div class="lg:col-span-5 space-y-5 sm:space-y-6">
+                    
+                    <!-- SEARCH & AUTOCOMPLETE CARD -->
+                    <div class="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200/90 space-y-3 relative">
+                        <label for="search-input" class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                            <span class="flex items-center gap-1.5 text-slate-700">
+                                <i data-lucide="search" class="w-4 h-4 text-brand-600"></i>
+                                Appel Élève (Prénom / Nom)
+                            </span>
+                            <span class="hidden sm:inline-block text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-mono border border-slate-200">
+                                Raccourci: Ctrl + K
+                            </span>
+                        </label>
+
+                        <!-- SEARCH INPUT FIELD -->
+                        <div class="relative w-full">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-brand-600">
+                                <i data-lucide="user-search" class="w-5 h-5"></i>
+                            </div>
+
+                            <input type="text" id="search-input" 
+                                   placeholder="Tapez le prénom ou le nom..." 
+                                   autocomplete="off"
+                                   oninput="handleSearchInput()"
+                                   onkeydown="handleSearchKeyDown(event)"
+                                   onfocus="handleSearchInput()"
+                                   class="w-full pl-11 pr-11 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-base sm:text-lg font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 transition shadow-inner">
+
+                            <!-- Clear Search Input Button -->
+                            <button id="clear-search-btn" onclick="clearSearchInput()" class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 touch-target">
+                                <i data-lucide="x-circle" class="w-5 h-5"></i>
+                            </button>
+
+                            <!-- MENU DÉROULANT / DROPDOWN AUTOCLOSE -->
+                            <div id="autocomplete-dropdown" 
+                                 class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 transition-all">
+                                <!-- Dynamically filled suggestions -->
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-400 flex items-center gap-1 pt-1">
+                            <i data-lucide="corner-down-left" class="w-3.5 h-3.5 text-brand-600 shrink-0"></i>
+                            <span>Cliquez ou tapez <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">Entrée</kbd> pour ajouter à l'appel. Le champ s'effacera immédiatement.</span>
+                        </p>
+                    </div>
+
+                    <!-- ACTION BUTTONS GRID -->
+                    <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/90 space-y-3">
+                        <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Actions & Importation</h3>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <!-- Import Excel / CSV Button -->
+                            <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-sm hover:shadow-indigo-200 active:scale-95 touch-btn">
+                                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                                <span>Importer Excel / CSV</span>
+                                <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
+                            </label>
+
+                            <!-- Add Unlisted Student Button -->
+                            <button onclick="openModal('modal-student')" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm active:scale-95 touch-btn">
+                                <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
+                                <span>+ Élève (Hors-liste)</span>
+                            </button>
+                        </div>
+
+                        <!-- Demo data loader -->
+                        <button onclick="loadDemoData()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 px-3 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition touch-btn">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
+                            <span>Charger des élèves de démonstration</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- KPI 1: Total Appel -->
+                        <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Présents</p>
+                                <p id="stat-total" class="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">0</p>
+                            </div>
+                            <div class="p-2 sm:p-2.5 bg-slate-100 text-slate-700 rounded-xl">
+                                <i data-lucide="users" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                            </div>
+                        </div>
+
+                        <!-- KPI 2: Statut Permanence -->
+                        <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] sm:text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider">Permanence</p>
+                                <p id="stat-perm" class="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5">0</p>
+                            </div>
+                            <div class="p-2 sm:p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                                <i data-lucide="shield-check" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                            </div>
+                        </div>
+
+                        <!-- KPI 3: Exclusion / Retenue -->
+                        <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] sm:text-[11px] font-extrabold text-rose-600 uppercase tracking-wider">Exclusions</p>
+                                <p id="stat-excl" class="text-xl sm:text-2xl font-black text-rose-600 mt-0.5">0</p>
+                            </div>
+                            <div class="p-2 sm:p-2.5 bg-rose-50 text-rose-600 rounded-xl">
+                                <i data-lucide="alert-triangle" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                            </div>
+                        </div>
+
+                        <!-- KPI 4: Autre motif -->
+                        <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] sm:text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">Autres</p>
+                                <p id="stat-autre" class="text-xl sm:text-2xl font-black text-amber-600 mt-0.5">0</p>
+                            </div>
+                            <div class="p-2 sm:p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                                <i data-lucide="clock" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & PRINT BAR) - lg:col-span-7 -->
+                <div class="lg:col-span-7 space-y-4">
+                    
+                    <!-- SESSION LIST HEADER TOOLBAR -->
+                    <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/90 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-brand-50 p-2 rounded-xl text-brand-600">
+                                <i data-lucide="list-checks" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-extrabold text-slate-900">
+                                    Feuille d'Appel en cours
+                                </h2>
+                                <p id="session-count-badge" class="text-xs font-semibold text-slate-400">
+                                    0 élève(s) enregistré(s)
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <!-- Reset Current Session List -->
+                            <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                <span>Vider</span>
+                            </button>
+
+                            <!-- PRINT BUTTON (NATIVE A4 PORTRAIT) -->
+                            <button onclick="triggerPrint()" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-brand-600/20 active:scale-95 touch-btn">
+                                <i data-lucide="printer" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                                <span>Imprimer A4</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="session-list-container" class="space-y-2.5">
+                        <!-- Dynamic Student Cards Rendered via JS -->
+                    </div>
+
+                    <!-- EMPTY SESSION STATE -->
+                    <div id="empty-session-state" class="bg-white rounded-3xl p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 space-y-3">
+                        <div class="mx-auto w-14 h-14 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center">
+                            <i data-lucide="user-check" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800">Aucun élève à l'appel pour le moment</h3>
+                        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+                            Recherchez le prénom ou nom d'un élève à gauche pour l'ajouter instantanément.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: ADD AED -->
+    <div id="modal-aed" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden transform transition-all">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-5 h-5 text-brand-500"></i>
+                    Ajouter un Surveillant (AED)
+                </h3>
+                <button onclick="closeModal('modal-aed')" class="text-slate-400 hover:text-white touch-target">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="handleAddAed(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Nom & Prénom de l'AED</label>
+                    <input type="text" id="new-aed-name" placeholder="ex: Mme DUPONT Sarah" required
+                           class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-aed')" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 touch-btn">
+                        Annuler
+                    </button>
+                    <button type="submit" class="px-4 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-sm hover:bg-brand-700 shadow-sm touch-btn">
+                        Enregistrer L'AED
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD UNLISTED STUDENT (HORS-LISTE) -->
+    <div id="modal-student" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden transform transition-all">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-5 h-5 text-brand-500"></i>
+                    Ajouter un Élève (Hors-liste)
+                </h3>
+                <button onclick="closeModal('modal-student')" class="text-slate-400 hover:text-white touch-target">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="handleAddUnlistedStudent(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nom de famille</label>
+                    <input type="text" id="new-student-nom" placeholder="ex: MARTIN" required
+                           class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 uppercase">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Prénom</label>
+                    <input type="text" id="new-student-prenom" placeholder="ex: Lucas" required
+                           class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Classe</label>
+                    <input type="text" id="new-student-classe" placeholder="ex: 6°A, 3°B, Tle2..." required
+                           class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 uppercase">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Statut initial</label>
+                    <select id="new-student-status" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="Permanence">Permanence</option>
+                        <option value="Exclusion">Exclusion</option>
+                        <option value="Autre">Autre (Retenue / Travail)</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-student')" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 touch-btn">
+                        Annuler
+                    </button>
+                    <button type="submit" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 shadow-sm touch-btn">
+                        Ajouter à l'appel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PRINT ONLY CONTAINER (A4 FORMAT PORTRAIT STRICT) -->
+    <div id="print-zone" class="print-only print-container p-2">
+        
+        <!-- HEADER IMPRESSION -->
+        <div class="border-b-2 border-slate-900 pb-3 mb-4">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <!-- EXIGENCE STRICTE DE TITRE: PERMANENCE DE (NOM AED) à (HEURE SANS MINUTES) -->
+                    <h1 id="print-title-header" class="text-xl font-black text-slate-900 tracking-tight uppercase">
+                        <!-- PERMANENCE DE [AED] à [XX]h -->
+                    </h1>
+                    <p class="text-xs text-slate-600 mt-1 font-semibold">
+                        Vie Scolaire — Registre officiel d'appel de la permanence
+                    </p>
+                </div>
+                <div class="text-right text-xs text-slate-700">
+                    <p><strong>Date :</strong> <span id="print-date"></span></p>
+                    <p><strong>Heure édition :</strong> <span id="print-full-time"></span></p>
+                </div>
+            </div>
+
+            <!-- RESUME STATS IMPRESSION -->
+            <div class="flex gap-6 mt-2 pt-2 border-t border-slate-200 text-xs font-medium">
+                <div>Effectif présent : <strong id="print-stat-total" class="text-slate-900">0</strong></div>
+                <div>Permanence normale : <strong id="print-stat-perm" class="text-emerald-800">0</strong></div>
+                <div>Exclusions : <strong id="print-stat-excl" class="text-rose-800">0</strong></div>
+                <div>Autres : <strong id="print-stat-autre" class="text-amber-800">0</strong></div>
+            </div>
+        </div>
+
+        <!-- TABLEAU COMPTE RENDU IMPRESSION -->
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width: 6%;">N°</th>
+                    <th style="width: 50%;">NOM PRÉNOM</th>
+                    <th style="width: 14%;">CLASSE</th>
+                    <th style="width: 20%;">MOTIF / STATUT</th>
+                    <th style="width: 10%; text-align: center;">PRÉSENCE</th>
+                </tr>
+            </thead>
+            <tbody id="print-table-body">
+                <!-- Injection JS -->
+            </tbody>
+        </table>
+
+        <!-- ZONE DE SIGNATURES -->
+        <div class="mt-12 pt-4 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs">
+            <div>
+                <p class="font-bold text-slate-800 mb-10">Signature de l'AED responsable :</p>
+                <p id="print-signature-aed" class="text-slate-600 border-b border-dashed border-slate-400 pb-1 font-semibold"></p>
+            </div>
+            <div>
+                <p class="font-bold text-slate-800 mb-10">Visa du CPE / Direction :</p>
+                <div class="border-b border-dashed border-slate-400 pb-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* LOCAL STORAGE KEYS */
+        const STORAGE_AEDS = 'perm_app_aeds_list_v4';
+        const STORAGE_SELECTED_AED = 'perm_app_selected_aed_v4';
+        const STORAGE_DATABASE = 'perm_app_students_db_v4';
+        const STORAGE_SESSION = 'perm_app_current_session_v4';
+
+        /* APPLICATION STATE */
+        let aeds = [];
+        let selectedAed = '';
+        let studentDatabase = []; // Tous les élèves du collège/lycée (base de recherche)
+        let sessionStudents = [];  // Élèves présents dans la permanence actuelle
+        
+        let searchMatches = [];    // Résultats filtrés pour la recherche
+        let selectedDropdownIndex = -1; // Indice de sélection au clavier dans le dropdown
+
+        window.onload = function() {
+            loadStoredData();
+            renderAedDropdown();
+            renderSessionList();
+            updateStats();
+            detectDeviceMode();
+            lucide.createIcons();
+
+            // Detect window resize to update device indicator
+            window.addEventListener('resize', detectDeviceMode);
+
+            // Close dropdown on click outside
+            document.addEventListener('click', function(e) {
+                const searchContainer = document.getElementById('search-input')?.closest('.relative');
+                if (searchContainer && !searchContainer.contains(e.target)) {
+                    hideAutocompleteDropdown();
+                }
+            });
+
+            // Keyboard shortcut (Ctrl + K or /) to focus search box
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput) {
+                        searchInput.focus();
+                        searchInput.select();
+                    }
+                }
+            });
+        };
+
+        function detectDeviceMode() {
+            const badge = document.getElementById('device-mode-badge');
+            if (!badge) return;
+
+            const width = window.innerWidth;
+            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+            if (width >= 1024) {
+                badge.innerHTML = `<i data-lucide="monitor" class="w-3.5 h-3.5"></i><span>Mode PC / Desktop</span>`;
+            } else if (width >= 768) {
+                const orientation = window.innerHeight > window.innerWidth ? 'Portrait' : 'Paysage';
+                badge.innerHTML = `<i data-lucide="tablet" class="w-3.5 h-3.5"></i><span>iPad / Tablette (${orientation})</span>`;
+            } else {
+                badge.innerHTML = `<i data-lucide="smartphone" class="w-3.5 h-3.5"></i><span>Mode Mobile</span>`;
+            }
+            lucide.createIcons();
+        }
+
+        function loadStoredData() {
+            // 1. AEDs
+            const storedAeds = localStorage.getItem(STORAGE_AEDS);
+            if (storedAeds) {
+                aeds = JSON.parse(storedAeds);
+            } else {
+                aeds = ['Marie CURIE', 'Thomas PESQUET', 'Sarah CONNOR', 'Lucas MARTIN'];
+                saveAeds();
+            }
+
+            // Selected AED
+            const storedSelectedAed = localStorage.getItem(STORAGE_SELECTED_AED);
+            if (storedSelectedAed && aeds.includes(storedSelectedAed)) {
+                selectedAed = storedSelectedAed;
+            } else {
+                selectedAed = aeds[0] || 'AED Général';
+            }
+
+            // 2. Database globale d'élèves
+            const storedDb = localStorage.getItem(STORAGE_DATABASE);
+            if (storedDb) {
+                studentDatabase = JSON.parse(storedDb);
+            } else {
+                studentDatabase = [];
+            }
+
+            // 3. Élèves de la session en cours
+            const storedSession = localStorage.getItem(STORAGE_SESSION);
+            if (storedSession) {
+                sessionStudents = JSON.parse(storedSession);
+            } else {
+                sessionStudents = [];
+            }
+        }
+
+        function saveAeds() {
+            localStorage.setItem(STORAGE_AEDS, JSON.stringify(aeds));
+        }
+
+        function saveSelectedAed() {
+            localStorage.setItem(STORAGE_SELECTED_AED, selectedAed);
+        }
+
+        function saveStudentDatabase() {
+            localStorage.setItem(STORAGE_DATABASE, JSON.stringify(studentDatabase));
+        }
+
+        function saveSessionStudents() {
+            localStorage.setItem(STORAGE_SESSION, JSON.stringify(sessionStudents));
+        }
+
+        function handleSearchInput() {
+            const input = document.getElementById('search-input');
+            const clearBtn = document.getElementById('clear-search-btn');
+            const query = input.value.trim().toLowerCase();
+
+            if (query.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+                hideAutocompleteDropdown();
+                return;
+            }
+
+            // Filtrage dans la base globale par Nom, Prénom ou Classe
+            searchMatches = studentDatabase.filter(s => {
+                const fullStr = `${s.nom} ${s.prenom} ${s.classe}`.toLowerCase();
+                const reverseStr = `${s.prenom} ${s.nom} ${s.classe}`.toLowerCase();
+                return fullStr.includes(query) || reverseStr.includes(query);
+            }).slice(0, 10); // Max 10 résultats
+
+            selectedDropdownIndex = -1;
+            renderAutocompleteDropdown(searchMatches, query);
+        }
+
+        function renderAutocompleteDropdown(matches, query) {
+            const dropdown = document.getElementById('autocomplete-dropdown');
+            dropdown.innerHTML = '';
+
+            if (matches.length === 0) {
+                dropdown.innerHTML = `
+                    <div class="p-4 text-center text-slate-500 text-xs">
+                        Aucun élève trouvé pour "<strong>${escapeHtml(query)}</strong>".
+                        <br>
+                        <button onclick="openModal('modal-student')" class="mt-2 text-brand-600 font-bold hover:underline">
+                            + Ajouter comme élève hors-liste
+                        </button>
+                    </div>
+                `;
+                dropdown.classList.remove('hidden');
+                return;
+            }
+
+            matches.forEach((student, index) => {
+                const item = document.createElement('div');
+                item.className = `p-3.5 cursor-pointer flex items-center justify-between hover:bg-brand-50/80 transition ${index === selectedDropdownIndex ? 'autocomplete-selected' : ''}`;
+                
+                // Format exigé: NOM Prénom Classe
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                            ${student.prenom.charAt(0)}
+                        </div>
+                        <div>
+                            <div class="text-sm font-bold text-slate-900">
+                                <span class="uppercase">${escapeHtml(student.nom)}</span> ${escapeHtml(student.prenom)}
+                            </div>
+                            <div class="text-[11px] text-slate-400">Classe : ${escapeHtml(student.classe)}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-slate-100 text-slate-800 border border-slate-200 font-black text-[11px] px-2.5 py-1 rounded-lg">
+                            ${escapeHtml(student.classe)}
+                        </span>
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-brand-600"></i>
+                    </div>
+                `;
+
+                item.onclick = function() {
+                    selectStudentFromSearch(student);
+                };
+
+                dropdown.appendChild(item);
+            });
+
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideAutocompleteDropdown() {
+            const dropdown = document.getElementById('autocomplete-dropdown');
+            dropdown.classList.add('hidden');
+            selectedDropdownIndex = -1;
+        }
+
+        function clearSearchInput() {
+            const input = document.getElementById('search-input');
+            input.value = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+            hideAutocompleteDropdown();
+            input.focus();
+        }
+
+        function handleSearchKeyDown(e) {
+            const dropdown = document.getElementById('autocomplete-dropdown');
+            const isVisible = !dropdown.classList.contains('hidden');
+
+            if (!isVisible || searchMatches.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedDropdownIndex = (selectedDropdownIndex + 1) % searchMatches.length;
+                updateDropdownHighlight();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedDropdownIndex = (selectedDropdownIndex - 1 + searchMatches.length) % searchMatches.length;
+                updateDropdownHighlight();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedDropdownIndex >= 0 && selectedDropdownIndex < searchMatches.length) {
+                    selectStudentFromSearch(searchMatches[selectedDropdownIndex]);
+                } else if (searchMatches.length > 0) {
+                    selectStudentFromSearch(searchMatches[0]);
+                }
+            } else if (e.key === 'Escape') {
+                hideAutocompleteDropdown();
+            }
+        }
+
+        function updateDropdownHighlight() {
+            const dropdown = document.getElementById('autocomplete-dropdown');
+            const items = dropdown.children;
+
+            for (let i = 0; i < items.length; i++) {
+                if (i === selectedDropdownIndex) {
+                    items[i].classList.add('autocomplete-selected');
+                    items[i].scrollIntoView({ block: 'nearest' });
+                } else {
+                    items[i].classList.remove('autocomplete-selected');
+                }
+            }
+        }
+
+        function selectStudentFromSearch(student) {
+            const exists = sessionStudents.some(s => s.id === student.id || (s.nom === student.nom && s.prenom === student.prenom && s.classe === student.classe));
+
+            if (exists) {
+                showToast(`${student.nom} ${student.prenom} est déjà dans l'appel !`, 'info');
+            } else {
+                sessionStudents.unshift({
+                    id: student.id || ('stu_' + Date.now()),
+                    nom: student.nom,
+                    prenom: student.prenom,
+                    classe: student.classe,
+                    status: 'Permanence',
+                    present: true
+                });
+
+                saveSessionStudents();
+                renderSessionList();
+                updateStats();
+                showToast(`Ajouté : ${student.nom} ${student.prenom} (${student.classe})`, 'success');
+            }
+
+            // Exigence : Effacement direct de la recherche & conservation du focus
+            clearSearchInput();
+        }
+
+        function cycleStudentStatus(id, event) {
+            if (event) event.stopPropagation();
+            
+            const student = sessionStudents.find(s => s.id === id);
+            if (!student) return;
+
+            if (student.status === 'Permanence') {
+                student.status = 'Exclusion';
+            } else if (student.status === 'Exclusion') {
+                student.status = 'Autre';
+            } else {
+                student.status = 'Permanence';
+            }
+
+            saveSessionStudents();
+            renderSessionList();
+            updateStats();
+        }
+
+        function removeFromSession(id, event) {
+            if (event) event.stopPropagation();
+
+            sessionStudents = sessionStudents.filter(s => s.id !== id);
+            saveSessionStudents();
+            renderSessionList();
+            updateStats();
+            showToast('Élève retiré de l\'appel', 'info');
+        }
+
+        function renderSessionList() {
+            const container = document.getElementById('session-list-container');
+            const emptyState = document.getElementById('empty-session-state');
+            const countBadge = document.getElementById('session-count-badge');
+
+            container.innerHTML = '';
+            countBadge.textContent = `${sessionStudents.length} élève(s) enregistré(s)`;
+
+            if (sessionStudents.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            sessionStudents.forEach(student => {
+                const card = document.createElement('div');
+                
+                let borderBgClass = 'bg-white border-slate-200';
+                if (student.status === 'Exclusion') borderBgClass = 'bg-rose-50/50 border-rose-200';
+                if (student.status === 'Autre') borderBgClass = 'bg-amber-50/50 border-amber-200';
+
+                card.className = `p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 shadow-sm hover:shadow-md ${borderBgClass}`;
+
+                // Status Toggle Button
+                let statusButtonHTML = '';
+                if (student.status === 'Permanence') {
+                    statusButtonHTML = `
+                        <button onclick="cycleStudentStatus('${student.id}', event)" 
+                                class="px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 text-white border border-emerald-600 hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-sm active:scale-95 touch-btn">
+                            <i data-lucide="shield-check" class="w-4 h-4"></i>
+                            <span>Permanence</span>
+                        </button>
+                    `;
+                } else if (student.status === 'Exclusion') {
+                    statusButtonHTML = `
+                        <button onclick="cycleStudentStatus('${student.id}', event)" 
+                                class="px-3 py-2 rounded-xl text-xs font-extrabold bg-rose-600 text-white border border-rose-700 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm active:scale-95 animate-pulse touch-btn">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                            <span>Exclusion</span>
+                        </button>
+                    `;
+                } else {
+                    statusButtonHTML = `
+                        <button onclick="cycleStudentStatus('${student.id}', event)" 
+                                class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 text-white border border-amber-600 hover:bg-amber-600 transition flex items-center gap-1.5 shadow-sm active:scale-95 touch-btn">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                            <span>Autre</span>
+                        </button>
+                    `;
+                }
+
+                // Format: NOM Prénom Classe
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <div class="w-10 h-10 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+                            ${escapeHtml(student.classe)}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+                                <span class="uppercase text-slate-950">${escapeHtml(student.nom)}</span> ${escapeHtml(student.prenom)}
+                            </div>
+                            <p class="text-[11px] text-slate-400 font-semibold">Classe : ${escapeHtml(student.classe)}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        ${statusButtonHTML}
+
+                        <button onclick="removeFromSession('${student.id}', event)" 
+                                class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition touch-target" 
+                                title="Retirer de l'appel">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function renderAedDropdown() {
+            const select = document.getElementById('aed-select');
+            select.innerHTML = '';
+
+            aeds.forEach(aed => {
+                const opt = document.createElement('option');
+                opt.value = aed;
+                opt.textContent = aed;
+                if (aed === selectedAed) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            select.onchange = function(e) {
+                selectedAed = e.target.value;
+                saveSelectedAed();
+                showToast(`AED actif : ${selectedAed}`, 'info');
+            };
+        }
+
+        function handleAddAed(e) {
+            e.preventDefault();
+            const input = document.getElementById('new-aed-name');
+            const name = input.value.trim();
+            if (name) {
+                if (!aeds.includes(name)) {
+                    aeds.push(name);
+                    saveAeds();
+                }
+                selectedAed = name;
+                saveSelectedAed();
+                renderAedDropdown();
+                input.value = '';
+                closeModal('modal-aed');
+                showToast(`Nouvel AED ajouté : ${name}`, 'success');
+            }
+        }
+
+        function handleAddUnlistedStudent(e) {
+            e.preventDefault();
+            const nom = document.getElementById('new-student-nom').value.trim().toUpperCase();
+            const prenom = capitalizeFirstLetter(document.getElementById('new-student-prenom').value.trim());
+            const classe = document.getElementById('new-student-classe').value.trim().toUpperCase();
+            const status = document.getElementById('new-student-status').value || 'Permanence';
+
+            if (nom && prenom && classe) {
+                const newStudent = {
+                    id: 'stu_' + Date.now(),
+                    nom: nom,
+                    prenom: prenom,
+                    classe: classe,
+                    status: status,
+                    present: true
+                };
+
+                studentDatabase.push(newStudent);
+                saveStudentDatabase();
+
+                sessionStudents.unshift(newStudent);
+                saveSessionStudents();
+
+                renderSessionList();
+                updateStats();
+
+                document.getElementById('new-student-nom').value = '';
+                document.getElementById('new-student-prenom').value = '';
+                document.getElementById('new-student-classe').value = '';
+                closeModal('modal-student');
+
+                showToast(`Élève ${nom} ${prenom} ajouté à la permanence !`, 'success');
+            }
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    if (!rawRows || rawRows.length === 0) {
+                        showToast('Fichier Excel vide', 'error');
+                        return;
+                    }
+
+                    parseAndSaveExcelData(rawRows);
+                    event.target.value = '';
+                } catch (err) {
+                    console.error(err);
+                    showToast('Erreur lors de l\'importation Excel', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseAndSaveExcelData(rows) {
+            let nomIdx = -1, prenomIdx = -1, classeIdx = -1;
+            const header = rows[0].map(c => String(c || '').toLowerCase().trim());
+
+            for (let i = 0; i < header.length; i++) {
+                if (header[i].includes('nom') && !header[i].includes('prenom') && !header[i].includes('prénom')) nomIdx = i;
+                if (header[i].includes('prenom') || header[i].includes('prénom')) prenomIdx = i;
+                if (header[i].includes('classe') || header[i].includes('div')) classeIdx = i;
+            }
+
+            if (nomIdx === -1) nomIdx = 0;
+            if (prenomIdx === -1) prenomIdx = 1;
+            if (classeIdx === -1) classeIdx = 2;
+
+            let addedCount = 0;
+            const startRow = (header[nomIdx] && header[nomIdx].includes('nom')) ? 1 : 0;
+
+            for (let r = startRow; r < rows.length; r++) {
+                const row = rows[r];
+                if (!row || row.length === 0) continue;
+
+                const nom = String(row[nomIdx] || '').trim().toUpperCase();
+                const prenom = capitalizeFirstLetter(String(row[prenomIdx] || '').trim());
+                let classe = String(row[classeIdx] || '').trim().toUpperCase();
+
+                if (!classe) classe = '6°A';
+
+                if (nom && prenom) {
+                    const exists = studentDatabase.some(s => s.nom === nom && s.prenom === prenom && s.classe === classe);
+                    if (!exists) {
+                        studentDatabase.push({
+                            id: 'stu_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                            nom: nom,
+                            prenom: prenom,
+                            classe: classe
+                        });
+                        addedCount++;
+                    }
+                }
+            }
+
+            saveStudentDatabase();
+            showToast(`${addedCount} élève(s) importé(s) dans la base !`, 'success');
+        }
+
+        function loadDemoData() {
+            const demo = [
+                { nom: 'DUPONT', prenom: 'Jean', classe: '6°A' },
+                { nom: 'MARTIN', prenom: 'Sophie', classe: '6°A' },
+                { nom: 'BENALI', prenom: 'Yassine', classe: '5°B' },
+                { nom: 'LEGRAND', prenom: 'Camille', classe: '4°C' },
+                { nom: 'RABAT', prenom: 'Lucas', classe: '3°A' },
+                { nom: 'KOWALSKI', prenom: 'Emma', classe: '6°B' },
+                { nom: 'MOREAU', prenom: 'Thomas', classe: '5°A' },
+                { nom: 'DIALLO', prenom: 'Aïcha', classe: '3°C' },
+                { nom: 'GARCIA', prenom: 'Antoine', classe: '4°B' },
+                { nom: 'PETIT', prenom: 'Chloé', classe: '5°C' }
+            ];
+
+            let count = 0;
+            demo.forEach(item => {
+                if (!studentDatabase.some(s => s.nom === item.nom && s.prenom === item.prenom)) {
+                    studentDatabase.push({
+                        id: 'stu_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                        nom: item.nom,
+                        prenom: item.prenom,
+                        classe: item.classe
+                    });
+                    count++;
+                }
+            });
+
+            saveStudentDatabase();
+            showToast(`Base de données chargée avec ${studentDatabase.length} élèves !`, 'info');
+        }
+
+        function resetCurrentSession() {
+            if (sessionStudents.length === 0) return;
+            sessionStudents = [];
+            saveSessionStudents();
+            renderSessionList();
+            updateStats();
+            showToast('L\'appel a été réinitialisé', 'info');
+        }
+
+        function updateStats() {
+            const total = sessionStudents.length;
+            const perm = sessionStudents.filter(s => s.status === 'Permanence').length;
+            const excl = sessionStudents.filter(s => s.status === 'Exclusion').length;
+            const autre = sessionStudents.filter(s => s.status === 'Autre').length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-perm').textContent = perm;
+            document.getElementById('stat-excl').textContent = excl;
+            document.getElementById('stat-autre').textContent = autre;
+        }
+
+        function triggerPrint() {
+            const now = new Date();
+            
+            // Format heure sans les minutes: 08h, 14h, etc.
+            const currentHourNum = now.getHours();
+            const hourFormatted = currentHourNum.toString().padStart(2, '0') + 'h';
+
+            const aedName = selectedAed || 'L\'AED';
+
+            // EXIGENCE DE TITRE : PERMANENCE DE (nom de L’AED) à (heure sans minutes)
+            const requiredTitle = `PERMANENCE DE ${aedName.toUpperCase()} à ${hourFormatted}`;
+
+            document.getElementById('print-title-header').textContent = requiredTitle;
+            document.getElementById('print-date').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('print-full-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            const total = sessionStudents.length;
+            const perm = sessionStudents.filter(s => s.status === 'Permanence').length;
+            const excl = sessionStudents.filter(s => s.status === 'Exclusion').length;
+            const autre = sessionStudents.filter(s => s.status === 'Autre').length;
+
+            document.getElementById('print-stat-total').textContent = total;
+            document.getElementById('print-stat-perm').textContent = perm;
+            document.getElementById('print-stat-excl').textContent = excl;
+            document.getElementById('print-stat-autre').textContent = autre;
+            document.getElementById('print-signature-aed').textContent = aedName;
+
+            // Remplir tableau
+            const printTbody = document.getElementById('print-table-body');
+            printTbody.innerHTML = '';
+
+            if (sessionStudents.length === 0) {
+                printTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 25px; color:#64748b;">Aucun élève enregistré lors de cet appel.</td></tr>`;
+            } else {
+                sessionStudents.forEach((s, idx) => {
+                    const tr = document.createElement('tr');
+                    
+                    let badgeClass = 'print-badge-perm';
+                    if (s.status === 'Exclusion') badgeClass = 'print-badge-excl';
+                    if (s.status === 'Autre') badgeClass = 'print-badge-autre';
+
+                    tr.innerHTML = `
+                        <td style="text-align: center;">${idx + 1}</td>
+                        <td><strong>${escapeHtml(s.nom)}</strong> ${escapeHtml(s.prenom)}</td>
+                        <td><strong>${escapeHtml(s.classe)}</strong></td>
+                        <td><span class="print-badge ${badgeClass}">${escapeHtml(s.status)}</span></td>
+                        <td style="text-align: center;"><b>PRÉSENT</b></td>
+                    `;
+                    printTbody.appendChild(tr);
+                });
+            }
+
+            setTimeout(() => {
+                window.print();
+            }, 150);
+        }
+
+        function capitalizeFirstLetter(str) {
+            if (!str) return '';
+            return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bg = 'bg-slate-900 text-white';
+            if (type === 'success') bg = 'bg-emerald-700 text-white';
+            if (type === 'error') bg = 'bg-rose-700 text-white';
+
+            toast.className = `${bg} px-4 py-3 rounded-2xl shadow-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `
+                <i data-lucide="info" class="w-4 h-4"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
