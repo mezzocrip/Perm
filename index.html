@@ -694,33 +694,51 @@
 
  matches.forEach((student, index) => {
  const item = document.createElement('div');
+ const alreadyAdded = isStudentInSession(student);
+ 
+ if (alreadyAdded) {
+ item.className = `p-3.5 flex items-center justify-between bg-slate-100/90 text-slate-400 opacity-60 cursor-not-allowed select-none ${index === selectedDropdownIndex ? 'autocomplete-selected' : ''}`;
+ } else {
  item.className = `p-3.5 cursor-pointer flex items-center justify-between hover:bg-brand-50/80 transition ${index === selectedDropdownIndex ? 'autocomplete-selected' : ''}`;
+ }
  
  const badgeClass = getClassBadgeStyle(student.classe);
 
  item.innerHTML = `
  <div class="flex items-center gap-3">
- <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+ <div class="w-8 h-8 rounded-full ${alreadyAdded ? 'bg-slate-300 text-slate-500' : 'bg-slate-900 text-white'} flex items-center justify-center font-bold text-xs shrink-0">
  ${student.prenom.charAt(0)}
  </div>
  <div>
- <div class="text-sm font-bold text-slate-900">
+ <div class="text-sm font-bold ${alreadyAdded ? 'text-slate-500 line-through' : 'text-slate-900'}">
  <span class="uppercase">${escapeHtml(student.nom)}</span> ${escapeHtml(student.prenom)}
  </div>
- <div class="text-[11px] text-slate-400">Classe : ${escapeHtml(student.classe)}</div>
+ <div class="text-[11px] ${alreadyAdded ? 'text-slate-400' : 'text-slate-400'}">Classe : ${escapeHtml(student.classe)}</div>
  </div>
  </div>
  <div class="flex items-center gap-2">
- <span class="${badgeClass} font-black text-[11px] px-2.5 py-1 rounded-lg border">
+ <span class="${badgeClass} font-black text-[11px] px-2.5 py-1 rounded-lg border ${alreadyAdded ? 'opacity-50' : ''}">
  ${escapeHtml(student.classe)}
  </span>
- <i data-lucide="plus-circle" class="w-5 h-5 text-brand-600"></i>
+ ${alreadyAdded ? 
+ `<span class="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-1 rounded-md border border-slate-300">
+ Déjà ajouté
+ </span>` 
+ : 
+ `<i data-lucide="plus-circle" class="w-5 h-5 text-brand-600"></i>`
+ }
  </div>
  `;
 
+ if (!alreadyAdded) {
  item.onclick = function() {
  selectStudentFromSearch(student);
  };
+ } else {
+ item.onclick = function() {
+ showToast(`${student.nom} ${student.prenom} est déjà présent dans la liste !`, 'error');
+ };
+ }
 
  dropdown.appendChild(item);
  });
@@ -759,10 +777,14 @@
  updateDropdownHighlight();
  } else if (e.key === 'Enter') {
  e.preventDefault();
- if (selectedDropdownIndex >= 0 && selectedDropdownIndex < searchMatches.length) {
- selectStudentFromSearch(searchMatches[selectedDropdownIndex]);
- } else if (searchMatches.length > 0) {
- selectStudentFromSearch(searchMatches[0]);
+ const targetIndex = selectedDropdownIndex >= 0 ? selectedDropdownIndex : 0;
+ const targetStudent = searchMatches[targetIndex];
+ if (targetStudent) {
+ if (isStudentInSession(targetStudent)) {
+ showToast(`${targetStudent.nom} ${targetStudent.prenom} est déjà présent dans la liste !`, 'error');
+ } else {
+ selectStudentFromSearch(targetStudent);
+ }
  }
  } else if (e.key === 'Escape') {
  hideAutocompleteDropdown();
