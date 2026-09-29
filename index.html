@@ -12,6 +12,9 @@
  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
  <!-- Lucide Icons -->
  <script src="https://unpkg.com/lucide@latest"></script>
+ <!-- html2canvas & jsPDF pour la génération de PDF native & Partage iOS -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
  <!-- Google Fonts: Inter -->
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -124,6 +127,18 @@
  }
 
  .print-only { display: none; }
+ 
+ /* Style spécifique pour la capture PDF via html2canvas */
+ .pdf-export-mode {
+ display: block !important;
+ position: absolute;
+ left: -9999px;
+ top: 0;
+ width: 794px; /* Largeur standard A4 en pixels (96 DPI) */
+ background: #ffffff !important;
+ padding: 30px !important;
+ color: #000000 !important;
+ }
  </style>
 </head>
 <body class="h-full text-slate-800 antialiased selection:bg-brand-500 selection:text-white flex flex-col">
@@ -333,17 +348,17 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
  </div>
  </div>
 
- <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+ <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
  <!-- Reset Current Session List -->
  <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
  <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
  <span>Vider</span>
  </button>
 
- <!-- BOUTON PARTAGE NATIF iOS / MOBILES -->
- <button onclick="triggerShare()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-indigo-600/20 active:scale-95 touch-btn" title="Partager via le menu natif iOS/Android">
+ <!-- BOUTON PARTAGE NATIF PDF (iOS / iPadOS) -->
+ <button onclick="sharePDFiOS()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-indigo-600/20 active:scale-95 touch-btn" title="Partager ou Imprimer le PDF via iOS">
  <i data-lucide="share" class="w-4 h-4 sm:w-5 sm:h-5"></i>
- <span>Partager</span>
+ <span>Partager PDF</span>
  </button>
 
  <!-- PRINT BUTTON (NATIVE A4 PORTRAIT) -->
@@ -792,6 +807,7 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  showToast(`Ajouté : ${student.nom} ${student.prenom} (${student.classe})`, 'success');
  }
 
+ // Exigence : Effacement direct de la recherche & conservation du focus
  clearSearchInput();
  }
 
@@ -1083,6 +1099,7 @@ title="Retirer de l'appel">
  showToast(`Base de données chargée avec ${studentDatabase.length} élèves !`, 'info');
  }
 
+ /* FUNCTION: CLEAR ENTIRE STUDENT DATABASE */
  function clearStudentDatabase() {
  if (studentDatabase.length === 0) {
  showToast('La base de données d\'élèves est déjà vide.', 'info');
@@ -1120,7 +1137,7 @@ if (confirmClear) {
  document.getElementById('stat-autre').textContent = autre;
  }
 
- function preparePrintZone() {
+ function preparePrintData() {
  const now = new Date();
  const currentHourNum = now.getHours();
  const hourFormatted = currentHourNum.toString().padStart(2, '0') + 'h';
@@ -1166,58 +1183,64 @@ let badgeClass = 'print-badge-perm';
  printTbody.appendChild(tr);
  });
  }
- return { requiredTitle, dateStr: now.toLocaleDateString('fr-FR') };
  }
 
  function triggerPrint() {
- preparePrintZone();
+ preparePrintData();
  setTimeout(() => {
  window.print();
  }, 150);
  }
 
- /* FONCTION DE PARTAGE NATIF iOS / ANDROID (Web Share API) */
- async function triggerShare() {
- if (sessionStudents.length === 0) {
- showToast('Aucun élève à partager dans la liste.', 'error');
- return;
- }
+ /* FUNCTION: GÉNÉRATION DU PDF ET PARTAGE NATIF IOS (WEB SHARE API) */
+ async function sharePDFiOS() {
+ preparePrintData();
+ showToast('Génération du PDF pour partage...', 'info');
 
- const { requiredTitle, dateStr } = preparePrintZone();
+ const printZone = document.getElementById('print-zone');
+ 
+// Activation temporaire pour la capture
+ printZone.classList.add('pdf-export-mode');
 
- // Construction du résumé textuel pour le partage direct
- let shareText = `${requiredTitle}\nDate : ${dateStr}\nEffectif présent : ${sessionStudents.length}\n\nLISTE DES ÉLÈVES :\n`;
- sessionStudents.forEach((s, i) => {
- shareText += `${i + 1}. ${s.nom} ${s.prenom} (${s.classe}) - ${s.status}\n`;
- });
-
- // Détection de la compatibilité du partage de fichier text/html (ou fallback en texte)
- if (navigator.share) {
  try {
- // Création d'un fichier texte contenant l'appel
- const file = new File([shareText], `Appel_Permanence_${dateStr.replace(/ /g, '_')}.txt`, { type: 'text/plain' });
+ const canvas = await html2canvas(printZone, {
+ scale: 2,
+ useCORS: true,
+ logging: false
+ });
 
- if (navigator.canShare && navigator.canShare({ files: [file] })) {
+ printZone.classList.remove('pdf-export-mode');
+
+ const imgData = canvas.toDataURL('image/jpeg', 0.95);
+ const { jsPDF } = window.jspdf;
+ const pdf = new jsPDF('p', 'mm', 'a4');
+ 
+const pdfWidth = pdf.internal.pageSize.getWidth();
+ const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+ pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+ const pdfBlob = pdf.output('blob');
+ const fileName = `Appel_Permanence_${new Date().toISOString().slice(0,10)}.pdf`;
+ const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+ // Utilisation de l'API de Partage Native iOS si disponible
+ if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
  await navigator.share({
- title: requiredTitle,
- text: shareText,
- files: [file]
+ files: [pdfFile],
+ title: 'Feuille d\'appel Permanence',
+ text: 'Voici le rapport au format PDF de la permanence.'
  });
+ showToast('Document partagé avec succès !', 'success');
  } else {
- await navigator.share({
- title: requiredTitle,
- text: shareText
- });
+ // Fallback si le partage natif n'est pas supporté : téléchargement direct
+ pdf.save(fileName);
+ showToast('PDF téléchargé.', 'success');
  }
- showToast('Partage effectué avec succès !', 'success');
- } catch (err) {
- if (err.name !== 'AbortError') {
- showToast('Erreur lors du partage : ' + err.message, 'error');
- }
- }
- } else {
- // Fallback si le navigateur ne supporte pas Web Share (PC sans support ou vieux navigateur)
- triggerPrint();
+ } catch (error) {
+ console.error('Erreur lors du partage PDF :', error);
+ printZone.classList.remove('pdf-export-mode');
+ showToast('Erreur lors de la création ou du partage du PDF', 'error');
  }
  }
 
