@@ -6,15 +6,15 @@
  <title>Permanence - Appel Multi-Écran</title>
  <link rel="apple-touch-icon" href="./Logo.png">
  
-<!-- Tailwind CSS -->
+ <!-- Tailwind CSS -->
  <script src="https://cdn.tailwindcss.com"></script>
  <!-- SheetJS (Excel / CSV parsing) -->
  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
  <!-- Lucide Icons -->
  <script src="https://unpkg.com/lucide@latest"></script>
- <!-- html2canvas & jsPDF pour la génération de PDF native & Partage iOS -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+ <!-- jsPDF & AutoTable pour la génération native de PDF iOS/Mobile -->
  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
  <!-- Google Fonts: Inter -->
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -127,18 +127,6 @@
  }
 
  .print-only { display: none; }
- 
- /* Style spécifique pour la capture PDF via html2canvas */
- .pdf-export-mode {
- display: block !important;
- position: absolute;
- left: -9999px;
- top: 0;
- width: 794px; /* Largeur standard A4 en pixels (96 DPI) */
- background: #ffffff !important;
- padding: 30px !important;
- color: #000000 !important;
- }
  </style>
 </head>
 <body class="h-full text-slate-800 antialiased selection:bg-brand-500 selection:text-white flex flex-col">
@@ -167,7 +155,7 @@
  <span>Mode PC</span>
  </span>
  </div>
- <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & impression A4</p>
+ <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & impression PDF / iOS</p>
  </div>
  </div>
 
@@ -195,7 +183,7 @@
  <!-- RESPONSIVE DASHBOARD LAYOUT -->
  <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
  
-<!-- LEFT COLUMN / PANEL (SEARCH, ACTIONS & KPIs) - lg:col-span-5 -->
+<!-- LEFT COLUMN / PANEL (SEARCH, ACTIONS & KPIs) -->
  <div class="lg:col-span-5 space-y-5 sm:space-y-6">
  
 <!-- SEARCH & AUTOCOMPLETE CARD -->
@@ -238,7 +226,7 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
 
  <p class="text-xs text-slate-400 flex items-center gap-1 pt-1">
  <i data-lucide="corner-down-left" class="w-3.5 h-3.5 text-brand-600 shrink-0"></i>
- <span>Cliquez ou tapez <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">Entrée</kbd> pour ajouter à l'appel. Le champ s'effacera immédiatement.</span>
+ <span>Cliquez ou tapez <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">Entrée</kbd> pour ajouter à l'appel.</span>
  </p>
  </div>
 
@@ -329,7 +317,7 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
 
  </div>
 
- <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & PRINT BAR) - lg:col-span-7 -->
+ <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & PRINT/SHARE BAR) -->
  <div class="lg:col-span-7 space-y-4">
  
 <!-- SESSION LIST HEADER TOOLBAR -->
@@ -350,19 +338,19 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
 
  <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
  <!-- Reset Current Session List -->
- <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
+ <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
  <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
- <span>Vider</span>
+ <span class="hidden sm:inline">Vider</span>
  </button>
 
- <!-- BOUTON PARTAGE NATIF PDF (iOS / iPadOS) -->
- <button onclick="sharePDFiOS()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-indigo-600/20 active:scale-95 touch-btn" title="Partager ou Imprimer le PDF via iOS">
+ <!-- iOS / MOBILE NATIVE SHARE PDF BUTTON -->
+ <button onclick="generateAndSharePDF()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition shadow-md shadow-sky-600/20 active:scale-95 touch-btn" title="Générer un PDF stylé et utiliser le partage iOS">
  <i data-lucide="share" class="w-4 h-4 sm:w-5 sm:h-5"></i>
- <span>Partager PDF</span>
+ <span>PDF & Partager</span>
  </button>
 
  <!-- PRINT BUTTON (NATIVE A4 PORTRAIT) -->
- <button onclick="triggerPrint()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition shadow-md shadow-brand-600/20 active:scale-95 touch-btn">
+ <button onclick="triggerPrint()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition shadow-md shadow-brand-600/20 active:scale-95 touch-btn">
  <i data-lucide="printer" class="w-4 h-4 sm:w-5 sm:h-5"></i>
  <span>Imprimer A4</span>
  </button>
@@ -538,11 +526,11 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
  /* APPLICATION STATE */
  let aeds = [];
  let selectedAed = '';
- let studentDatabase = []; // Tous les élèves du collège/lycée (base de recherche)
- let sessionStudents = []; // Élèves présents dans la permanence actuelle
+ let studentDatabase = [];
+ let sessionStudents = [];
  
-let searchMatches = []; // Résultats filtrés pour la recherche
- let selectedDropdownIndex = -1; // Indice de sélection au clavier dans le dropdown
+let searchMatches = [];
+ let selectedDropdownIndex = -1;
 
  window.onload = function() {
  loadStoredData();
@@ -553,10 +541,8 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  detectDeviceMode();
  lucide.createIcons();
 
- // Detect window resize to update device indicator
  window.addEventListener('resize', detectDeviceMode);
 
- // Close dropdown on click outside
  document.addEventListener('click', function(e) {
  const searchContainer = document.getElementById('search-input')?.closest('.relative');
  if (searchContainer && !searchContainer.contains(e.target)) {
@@ -564,7 +550,6 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  }
  });
 
- // Keyboard shortcut (Ctrl + K or /) to focus search box
  document.addEventListener('keydown', function(e) {
  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
  e.preventDefault();
@@ -582,7 +567,6 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  if (!badge) return;
 
  const width = window.innerWidth;
- const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
  if (width >= 1024) {
  badge.innerHTML = `<i data-lucide="monitor" class="w-3.5 h-3.5"></i><span>Mode PC / Desktop</span>`;
@@ -590,13 +574,12 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  const orientation = window.innerHeight > window.innerWidth ? 'Portrait' : 'Paysage';
  badge.innerHTML = `<i data-lucide="tablet" class="w-3.5 h-3.5"></i><span>iPad / Tablette (${orientation})</span>`;
  } else {
- badge.innerHTML = `<i data-lucide="smartphone" class="w-3.5 h-3.5"></i><span>Mode Mobile</span>`;
+ badge.innerHTML = `<i data-lucide="smartphone" class="w-3.5 h-3.5"></i><span>Mode Mobile / iOS</span>`;
  }
  lucide.createIcons();
  }
 
  function loadStoredData() {
- // 1. AEDs
  const storedAeds = localStorage.getItem(STORAGE_AEDS);
  if (storedAeds) {
  aeds = JSON.parse(storedAeds);
@@ -605,7 +588,6 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  saveAeds();
  }
 
- // Selected AED
  const storedSelectedAed = localStorage.getItem(STORAGE_SELECTED_AED);
  if (storedSelectedAed && aeds.includes(storedSelectedAed)) {
  selectedAed = storedSelectedAed;
@@ -613,7 +595,6 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  selectedAed = aeds[0] || 'AED Général';
  }
 
- // 2. Database globale d'élèves
  const storedDb = localStorage.getItem(STORAGE_DATABASE);
  if (storedDb) {
  studentDatabase = JSON.parse(storedDb);
@@ -621,7 +602,6 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  studentDatabase = [];
  }
 
- // 3. Élèves de la session en cours
  const storedSession = localStorage.getItem(STORAGE_SESSION);
  if (storedSession) {
  sessionStudents = JSON.parse(storedSession);
@@ -667,12 +647,11 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  return;
  }
 
- // Filtrage dans la base globale par Nom, Prénom ou Classe
  searchMatches = studentDatabase.filter(s => {
  const fullStr = `${s.nom} ${s.prenom} ${s.classe}`.toLowerCase();
  const reverseStr = `${s.prenom} ${s.nom} ${s.classe}`.toLowerCase();
  return fullStr.includes(query) || reverseStr.includes(query);
- }).slice(0, 10); // Max 10 résultats
+ }).slice(0, 10);
 
  selectedDropdownIndex = -1;
  renderAutocompleteDropdown(searchMatches, query);
@@ -700,7 +679,6 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  const item = document.createElement('div');
  item.className = `p-3.5 cursor-pointer flex items-center justify-between hover:bg-brand-50/80 transition ${index === selectedDropdownIndex ? 'autocomplete-selected' : ''}`;
  
-// Format exigé: NOM Prénom Classe
  item.innerHTML = `
  <div class="flex items-center gap-3">
  <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -807,7 +785,6 @@ let searchMatches = []; // Résultats filtrés pour la recherche
  showToast(`Ajouté : ${student.nom} ${student.prenom} (${student.classe})`, 'success');
  }
 
- // Exigence : Effacement direct de la recherche & conservation du focus
  clearSearchInput();
  }
 
@@ -864,7 +841,6 @@ let borderBgClass = 'bg-white border-slate-200';
 
  card.className = `p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 shadow-sm hover:shadow-md ${borderBgClass}`;
 
- // Status Toggle Button
  let statusButtonHTML = '';
  if (student.status === 'Permanence') {
  statusButtonHTML = `
@@ -892,7 +868,6 @@ class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 text-white borde
  `;
  }
 
- // Format: NOM Prénom Classe
  card.innerHTML = `
  <div class="flex items-center gap-3 min-w-0 flex-1">
  <div class="w-10 h-10 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
@@ -1099,7 +1074,6 @@ title="Retirer de l'appel">
  showToast(`Base de données chargée avec ${studentDatabase.length} élèves !`, 'info');
  }
 
- /* FUNCTION: CLEAR ENTIRE STUDENT DATABASE */
  function clearStudentDatabase() {
  if (studentDatabase.length === 0) {
  showToast('La base de données d\'élèves est déjà vide.', 'info');
@@ -1137,7 +1111,7 @@ if (confirmClear) {
  document.getElementById('stat-autre').textContent = autre;
  }
 
- function preparePrintData() {
+ function triggerPrint() {
  const now = new Date();
  const currentHourNum = now.getHours();
  const hourFormatted = currentHourNum.toString().padStart(2, '0') + 'h';
@@ -1183,64 +1157,173 @@ let badgeClass = 'print-badge-perm';
  printTbody.appendChild(tr);
  });
  }
- }
 
- function triggerPrint() {
- preparePrintData();
  setTimeout(() => {
  window.print();
  }, 150);
  }
 
- /* FUNCTION: GÉNÉRATION DU PDF ET PARTAGE NATIF IOS (WEB SHARE API) */
- async function sharePDFiOS() {
- preparePrintData();
- showToast('Génération du PDF pour partage...', 'info');
-
- const printZone = document.getElementById('print-zone');
- 
-// Activation temporaire pour la capture
- printZone.classList.add('pdf-export-mode');
-
- try {
- const canvas = await html2canvas(printZone, {
- scale: 2,
- useCORS: true,
- logging: false
- });
-
- printZone.classList.remove('pdf-export-mode');
-
- const imgData = canvas.toDataURL('image/jpeg', 0.95);
- const { jsPDF } = window.jspdf;
- const pdf = new jsPDF('p', 'mm', 'a4');
- 
-const pdfWidth = pdf.internal.pageSize.getWidth();
- const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
- pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-
- const pdfBlob = pdf.output('blob');
- const fileName = `Appel_Permanence_${new Date().toISOString().slice(0,10)}.pdf`;
- const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
- // Utilisation de l'API de Partage Native iOS si disponible
- if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
- await navigator.share({
- files: [pdfFile],
- title: 'Feuille d\'appel Permanence',
- text: 'Voici le rapport au format PDF de la permanence.'
- });
- showToast('Document partagé avec succès !', 'success');
- } else {
- // Fallback si le partage natif n'est pas supporté : téléchargement direct
- pdf.save(fileName);
- showToast('PDF téléchargé.', 'success');
+ /**
+ * GENERATION PDF STYLISÉ ET PARTAGE NATIF (iOS / IPAD / MOBILE)
+ */
+ async function generateAndSharePDF() {
+ if (!window.jspdf || !window.jspdf.jsPDF) {
+ showToast('Module PDF en cours de chargement...', 'error');
+ return;
  }
- } catch (error) {
- console.error('Erreur lors du partage PDF :', error);
- printZone.classList.remove('pdf-export-mode');
- showToast('Erreur lors de la création ou du partage du PDF', 'error');
+
+ const now = new Date();
+ const hourFormatted = now.getHours().toString().padStart(2, '0') + 'h';
+ const aedName = selectedAed || 'L\'AED';
+ const titleHeader = `PERMANENCE DE ${aedName.toUpperCase()} à ${hourFormatted}`;
+ const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+ const { jsPDF } = window.jspdf;
+ const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+
+ // Couleurs de la charte
+ const colorPrimary = [15, 23, 42]; // Slate 900
+ const colorAccent = [22, 163, 74]; // Brand Green 600
+
+ // Header - Bandeau
+ doc.setFillColor(...colorPrimary);
+ doc.rect(0, 0, 210, 28, 'F');
+
+ doc.setTextColor(255, 255, 255);
+ doc.setFont('helvetica', 'bold');
+ doc.setFontSize(15);
+ doc.text(titleHeader, 14, 15);
+
+ doc.setFont('helvetica', 'normal');
+ doc.setFontSize(9);
+ doc.setTextColor(203, 213, 225);
+ doc.text('Vie Scolaire - Registre officiel d\'appel de la permanence', 14, 22);
+
+ // Meta Data (Date & Heure)
+ doc.setTextColor(51, 65, 85);
+ doc.setFontSize(9);
+ doc.setFont('helvetica', 'bold');
+ doc.text(`Date : ${dateStr}`, 200, 15, { align: 'right' });
+ doc.text(`Heure : ${timeStr}`, 200, 21, { align: 'right' });
+
+ // Recapitulatifs / Stats
+ const total = sessionStudents.length;
+ const perm = sessionStudents.filter(s => s.status === 'Permanence').length;
+ const excl = sessionStudents.filter(s => s.status === 'Exclusion').length;
+ const autre = sessionStudents.filter(s => s.status === 'Autre').length;
+
+ doc.setFillColor(248, 250, 252);
+ doc.roundedRect(14, 33, 182, 14, 2, 2, 'F');
+ doc.setDrawColor(226, 232, 240);
+ doc.roundedRect(14, 33, 182, 14, 2, 2, 'D');
+
+ doc.setFontSize(8.5);
+ doc.setTextColor(30, 41, 59);
+ doc.text(`Effectif présent : ${total}`, 20, 41.5);
+ doc.text(`Permanence : ${perm}`, 70, 41.5);
+ doc.text(`Exclusions : ${excl}`, 115, 41.5);
+ doc.text(`Autres : ${autre}`, 160, 41.5);
+
+ // Preparation du tableau
+ const tableBody = sessionStudents.length === 0 
+ ? [["-", "Aucun élève enregistré lors de cet appel", "-", "-", "-"]]
+ : sessionStudents.map((s, idx) => [
+ idx + 1,
+ `${s.nom.toUpperCase()} ${s.prenom}`,
+ s.classe,
+ s.status.toUpperCase(),
+ "PRÉSENT"
+ ]);
+
+ doc.autoTable({
+ startY: 52,
+ head: [['N°', 'NOM PRÉNOM', 'CLASSE', 'MOTIF / STATUT', 'PRÉSENCE']],
+ body: tableBody,
+ theme: 'grid',
+ headStyles: {
+ fillColor: [15, 23, 42],
+ textColor: [255, 255, 255],
+ fontStyle: 'bold',
+ fontSize: 9,
+ halign: 'left'
+ },
+ bodyStyles: {
+ fontSize: 9,
+ textColor: [30, 41, 59]
+ },
+ columnStyles: {
+ 0: { cellWidth: 12, halign: 'center' },
+ 1: { cellWidth: 80, fontStyle: 'bold' },
+ 2: { cellWidth: 25, fontStyle: 'bold' },
+ 3: { cellWidth: 40 },
+ 4: { cellWidth: 25, halign: 'center', fontStyle: 'bold' }
+ },
+ didParseCell: function(data) {
+ if (data.section === 'body' && data.column.index === 3) {
+ const val = data.cell.raw;
+ if (val === 'EXCLUSION') {
+ data.cell.styles.textColor = [159, 18, 57];
+ data.cell.styles.fontStyle = 'bold';
+ } else if (val === 'AUTRE') {
+ data.cell.styles.textColor = [146, 64, 14];
+ data.cell.styles.fontStyle = 'bold';
+ } else {
+ data.cell.styles.textColor = [22, 101, 52];
+ }
+ }
+ }
+ });
+
+ // Zone de signatures en bas de page
+ const finalY = doc.lastAutoTable.finalY + 15;
+ const pageHeight = doc.internal.pageSize.height;
+ const signY = finalY > pageHeight - 40 ? pageHeight - 35 : finalY;
+
+ doc.setFontSize(9);
+ doc.setFont('helvetica', 'bold');
+ doc.setTextColor(15, 23, 42);
+ doc.text("Signature de l'AED responsable :", 14, signY);
+ doc.setFont('helvetica', 'normal');
+ doc.text(aedName, 14, signY + 12);
+ doc.setLineDash([1, 1], 0);
+ doc.line(14, signY + 14, 85, signY + 14);
+
+ doc.setFont('helvetica', 'bold');
+ doc.text("Visa du CPE / Direction :", 125, signY);
+ doc.line(125, signY + 14, 196, signY + 14);
+
+ // Generation du Blob PDF
+ const pdfArrayBuffer = doc.output('arraybuffer');
+ const pdfBlob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
+ const fileName = `Feuille_Appel_${aedName.replace(/\s+/g, '_')}_${hourFormatted}.pdf`;
+
+ // PARTAGE NATIF iOS (Web Share API) OU TELECHARGEMENT
+ const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+ if (navigator.canShare && navigator.canShare({ files: [file] })) {
+ try {
+ await navigator.share({
+ files: [file],
+ title: titleHeader,
+ text: `Feuille d'appel de permanence - ${aedName} (${dateStr})`
+ });
+ showToast('Partagé avec succès !', 'success');
+ } catch (err) {
+ if (err.name !== 'AbortError') {
+ console.error('Erreur de partage :', err);
+ doc.save(fileName);
+ }
+ }
+ } else {
+ // Fallback : Téléchargement direct si le partage de fichier n'est pas supporté par le navigateur
+ const blobUrl = URL.createObjectURL(pdfBlob);
+ const link = document.createElement('a');
+ link.href = blobUrl;
+ link.download = fileName;
+ link.click();
+ URL.revokeObjectURL(blobUrl);
+ showToast('PDF téléchargé avec succès', 'success');
  }
  }
 
