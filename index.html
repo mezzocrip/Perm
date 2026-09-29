@@ -12,7 +12,7 @@
  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
  <!-- Lucide Icons -->
  <script src="https://unpkg.com/lucide@latest"></script>
- <!-- jsPDF & AutoTable pour la génération native de PDF iOS/Mobile -->
+ <!-- jsPDF & AutoTable -->
  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
  <!-- Google Fonts: Inter -->
@@ -136,10 +136,10 @@
  <!-- MAIN APP LAYOUT CONTAINER -->
  <div class="min-h-full flex flex-col no-print flex-1">
  
-<header class="bg-slate-900 text-white shadow-xl sticky top-0 z-30 border-b border-slate-800">
+ <header class="bg-slate-900 text-white shadow-xl sticky top-0 z-30 border-b border-slate-800">
  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
  
-<!-- Logo & App Title -->
+ <!-- Logo & App Title -->
  <div class="flex items-center space-x-3">
  <div class="bg-brand-500 text-slate-950 p-2.5 rounded-2xl shadow-lg font-bold">
  <i data-lucide="clipboard-check" class="w-6 h-6"></i>
@@ -155,7 +155,7 @@
  <span>Mode PC</span>
  </span>
  </div>
- <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & impression PDF / iOS</p>
+ <p class="text-xs text-slate-400 font-medium">Saisie d'appel réactive & impression PDF</p>
  </div>
  </div>
 
@@ -166,9 +166,14 @@
  <span class="text-xs font-bold uppercase tracking-wider">AED :</span>
  </div>
  
-<select id="aed-select" class="bg-slate-900 text-white font-bold text-sm rounded-xl px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer flex-1 sm:flex-initial">
+ <select id="aed-select" class="bg-slate-900 text-white font-bold text-sm rounded-xl px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer flex-1 sm:flex-initial">
  <!-- Dynamic options via JS -->
  </select>
+
+ <!-- BOUTON SUPPRIMER UN AED -->
+ <button onclick="deleteCurrentAed()" class="bg-rose-900/40 hover:bg-rose-700 text-rose-300 hover:text-white px-2.5 py-2 rounded-xl text-xs font-bold flex items-center transition border border-rose-700/50 touch-btn" title="Supprimer cet AED">
+ <i data-lucide="trash-2" class="w-4 h-4"></i>
+ </button>
 
  <button onclick="openModal('modal-aed')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm hover:shadow-slate-700/50 touch-btn" title="Ajouter un nouvel AED">
  <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
@@ -183,10 +188,10 @@
  <!-- RESPONSIVE DASHBOARD LAYOUT -->
  <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
  
-<!-- LEFT COLUMN / PANEL (SEARCH, ACTIONS & KPIs) -->
+ <!-- LEFT COLUMN / PANEL (SEARCH, ACTIONS & KPIs) -->
  <div class="lg:col-span-5 space-y-5 sm:space-y-6">
  
-<!-- SEARCH & AUTOCOMPLETE CARD -->
+ <!-- SEARCH & AUTOCOMPLETE CARD -->
  <div class="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200/90 space-y-3 relative">
  <label for="search-input" class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
  <span class="flex items-center gap-1.5 text-slate-700">
@@ -205,8 +210,8 @@
  </div>
 
  <input type="text" id="search-input" 
-placeholder="Tapez le prénom ou le nom..." 
-autocomplete="off"
+ placeholder="Tapez le prénom ou le nom..." 
+ autocomplete="off"
  oninput="handleSearchInput()"
  onkeydown="handleSearchKeyDown(event)"
  onfocus="handleSearchInput()"
@@ -219,7 +224,7 @@ autocomplete="off"
 
  <!-- MENU DÉROULANT / DROPDOWN AUTOCLOSE -->
  <div id="autocomplete-dropdown" 
-class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 transition-all">
+ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 transition-all">
  <!-- Dynamically filled suggestions -->
  </div>
  </div>
@@ -239,7 +244,7 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
  </span>
  </div>
  
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+ <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
  <!-- Import Excel / CSV Button -->
  <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-sm hover:shadow-indigo-200 active:scale-95 touch-btn">
  <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
@@ -317,10 +322,10 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
 
  </div>
 
- <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & PRINT/SHARE BAR) -->
+ <!-- RIGHT COLUMN / PANEL (ACTIVE CALL SESSION LIST & PRINT) -->
  <div class="lg:col-span-7 space-y-4">
  
-<!-- SESSION LIST HEADER TOOLBAR -->
+ <!-- SESSION LIST HEADER TOOLBAR -->
  <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/90 flex flex-wrap items-center justify-between gap-3">
  <div class="flex items-center gap-2">
  <div class="bg-brand-50 p-2 rounded-xl text-brand-600">
@@ -341,12 +346,6 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
  <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
  <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
  <span class="hidden sm:inline">Vider</span>
- </button>
-
- <!-- iOS / MOBILE NATIVE SHARE PDF BUTTON -->
- <button onclick="generateAndSharePDF()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition shadow-md shadow-sky-600/20 active:scale-95 touch-btn" title="Générer un PDF stylé et utiliser le partage iOS">
- <i data-lucide="share" class="w-4 h-4 sm:w-5 sm:h-5"></i>
- <span>PDF & Partager</span>
  </button>
 
  <!-- PRINT BUTTON (NATIVE A4 PORTRAIT) -->
@@ -460,11 +459,10 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
  <!-- PRINT ONLY CONTAINER (A4 FORMAT PORTRAIT STRICT) -->
  <div id="print-zone" class="print-only print-container p-2">
  
-<!-- HEADER IMPRESSION -->
+ <!-- HEADER IMPRESSION -->
  <div class="border-b-2 border-slate-900 pb-3 mb-4">
  <div class="flex justify-between items-start mb-2">
  <div>
- <!-- EXIGENCE STRICTE DE TITRE: PERMANENCE DE (NOM AED) à (HEURE SANS MINUTES) -->
  <h1 id="print-title-header" class="text-xl font-black text-slate-900 tracking-tight uppercase">
  <!-- PERMANENCE DE [AED] à [XX]h -->
  </h1>
@@ -473,7 +471,10 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
  </p>
  </div>
  <div class="text-right text-xs text-slate-700">
- <p><strong>Date :</strong> <span id="print-date"></span></p>
+ <!-- DATE MISE EN ÉVIDENCE EN GROS ET GRAS -->
+ <p class="text-lg font-black text-slate-900 uppercase tracking-wide border-b-2 border-slate-900 pb-1 mb-1" id="print-date">
+ <!-- FORMAT LUNDI 3 NOVEMBRE 2021 -->
+ </p>
  <p><strong>Heure édition :</strong> <span id="print-full-time"></span></p>
  </div>
  </div>
@@ -529,7 +530,7 @@ class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate
  let studentDatabase = [];
  let sessionStudents = [];
  
-let searchMatches = [];
+ let searchMatches = [];
  let selectedDropdownIndex = -1;
 
  window.onload = function() {
@@ -634,6 +635,22 @@ let searchMatches = [];
  }
  }
 
+ function getClassBadgeStyle(classe) {
+ if (!classe) return 'bg-slate-900 text-white border-slate-900';
+ const str = classe.toString().toLowerCase();
+
+ if (str.includes('6')) {
+ return 'bg-red-500 text-white border-red-600';
+ } else if (str.includes('5')) {
+ return 'bg-emerald-500 text-white border-emerald-600';
+ } else if (str.includes('4')) {
+ return 'bg-amber-400 text-slate-950 border-amber-500';
+ } else if (str.includes('3')) {
+ return 'bg-blue-600 text-white border-blue-700';
+ }
+ return 'bg-slate-900 text-white border-slate-900';
+ }
+
  function handleSearchInput() {
  const input = document.getElementById('search-input');
  const clearBtn = document.getElementById('clear-search-btn');
@@ -679,6 +696,8 @@ let searchMatches = [];
  const item = document.createElement('div');
  item.className = `p-3.5 cursor-pointer flex items-center justify-between hover:bg-brand-50/80 transition ${index === selectedDropdownIndex ? 'autocomplete-selected' : ''}`;
  
+ const badgeClass = getClassBadgeStyle(student.classe);
+
  item.innerHTML = `
  <div class="flex items-center gap-3">
  <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -692,7 +711,7 @@ let searchMatches = [];
  </div>
  </div>
  <div class="flex items-center gap-2">
- <span class="bg-slate-100 text-slate-800 border border-slate-200 font-black text-[11px] px-2.5 py-1 rounded-lg">
+ <span class="${badgeClass} font-black text-[11px] px-2.5 py-1 rounded-lg border">
  ${escapeHtml(student.classe)}
  </span>
  <i data-lucide="plus-circle" class="w-5 h-5 text-brand-600"></i>
@@ -764,12 +783,22 @@ let searchMatches = [];
  }
  }
 
- function selectStudentFromSearch(student) {
- const exists = sessionStudents.some(s => s.id === student.id || (s.nom === student.nom && s.prenom === student.prenom && s.classe === student.classe));
+ function isStudentInSession(student) {
+ return sessionStudents.some(s => 
+ s.id === student.id || 
+ (s.nom.toUpperCase() === student.nom.toUpperCase() && 
+ s.prenom.toLowerCase() === student.prenom.toLowerCase() && 
+ s.classe.toUpperCase() === student.classe.toUpperCase())
+ );
+ }
 
- if (exists) {
- showToast(`${student.nom} ${student.prenom} est déjà dans l'appel !`, 'info');
- } else {
+ function selectStudentFromSearch(student) {
+ if (isStudentInSession(student)) {
+ showToast(`${student.nom} ${student.prenom} est déjà présent dans la liste !`, 'error');
+ clearSearchInput();
+ return;
+ }
+
  sessionStudents.unshift({
  id: student.id || ('stu_' + Date.now()),
  nom: student.nom,
@@ -783,7 +812,6 @@ let searchMatches = [];
  renderSessionList();
  updateStats();
  showToast(`Ajouté : ${student.nom} ${student.prenom} (${student.classe})`, 'success');
- }
 
  clearSearchInput();
  }
@@ -791,7 +819,7 @@ let searchMatches = [];
  function cycleStudentStatus(id, event) {
  if (event) event.stopPropagation();
  
-const student = sessionStudents.find(s => s.id === id);
+ const student = sessionStudents.find(s => s.id === id);
  if (!student) return;
 
  if (student.status === 'Permanence') {
@@ -835,7 +863,7 @@ const student = sessionStudents.find(s => s.id === id);
  sessionStudents.forEach(student => {
  const card = document.createElement('div');
  
-let borderBgClass = 'bg-white border-slate-200';
+ let borderBgClass = 'bg-white border-slate-200';
  if (student.status === 'Exclusion') borderBgClass = 'bg-rose-50/50 border-rose-200';
  if (student.status === 'Autre') borderBgClass = 'bg-amber-50/50 border-amber-200';
 
@@ -845,7 +873,7 @@ let borderBgClass = 'bg-white border-slate-200';
  if (student.status === 'Permanence') {
  statusButtonHTML = `
  <button onclick="cycleStudentStatus('${student.id}', event)" 
-class="px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 text-white border border-emerald-600 hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-sm active:scale-95 touch-btn">
+ class="px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 text-white border border-emerald-600 hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-sm active:scale-95 touch-btn">
  <i data-lucide="shield-check" class="w-4 h-4"></i>
  <span>Permanence</span>
  </button>
@@ -853,7 +881,7 @@ class="px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 text-white bor
  } else if (student.status === 'Exclusion') {
  statusButtonHTML = `
  <button onclick="cycleStudentStatus('${student.id}', event)" 
-class="px-3 py-2 rounded-xl text-xs font-extrabold bg-rose-600 text-white border border-rose-700 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm active:scale-95 animate-pulse touch-btn">
+ class="px-3 py-2 rounded-xl text-xs font-extrabold bg-rose-600 text-white border border-rose-700 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm active:scale-95 animate-pulse touch-btn">
  <i data-lucide="alert-triangle" class="w-4 h-4"></i>
  <span>Exclusion</span>
  </button>
@@ -861,16 +889,18 @@ class="px-3 py-2 rounded-xl text-xs font-extrabold bg-rose-600 text-white border
  } else {
  statusButtonHTML = `
  <button onclick="cycleStudentStatus('${student.id}', event)" 
-class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 text-white border border-amber-600 hover:bg-amber-600 transition flex items-center gap-1.5 shadow-sm active:scale-95 touch-btn">
+ class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 text-white border border-amber-600 hover:bg-amber-600 transition flex items-center gap-1.5 shadow-sm active:scale-95 touch-btn">
  <i data-lucide="clock" class="w-4 h-4"></i>
  <span>Autre</span>
  </button>
  `;
  }
 
+ const badgeClass = getClassBadgeStyle(student.classe);
+
  card.innerHTML = `
  <div class="flex items-center gap-3 min-w-0 flex-1">
- <div class="w-10 h-10 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+ <div class="w-10 h-10 rounded-xl ${badgeClass} font-black text-xs flex items-center justify-center shrink-0 shadow-sm border">
  ${escapeHtml(student.classe)}
  </div>
  <div class="min-w-0 flex-1">
@@ -885,8 +915,8 @@ class="px-3 py-2 rounded-xl text-xs font-extrabold bg-amber-500 text-white borde
  ${statusButtonHTML}
 
  <button onclick="removeFromSession('${student.id}', event)" 
-class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition touch-target" 
-title="Retirer de l'appel">
+ class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition touch-target" 
+ title="Retirer de l'appel">
  <i data-lucide="trash-2" class="w-4 h-4"></i>
  </button>
  </div>
@@ -901,6 +931,11 @@ title="Retirer de l'appel">
  function renderAedDropdown() {
  const select = document.getElementById('aed-select');
  select.innerHTML = '';
+
+ if (aeds.length === 0) {
+ aeds = ['AED Général'];
+ saveAeds();
+ }
 
  aeds.forEach(aed => {
  const opt = document.createElement('option');
@@ -935,6 +970,25 @@ title="Retirer de l'appel">
  }
  }
 
+ function deleteCurrentAed() {
+ if (aeds.length <= 1) {
+ showToast('Vous devez conserver au moins un AED dans la liste.', 'error');
+ return;
+ }
+
+ const nameToDelete = selectedAed;
+ const confirmDelete = confirm(`Voulez-vous vraiment supprimer l'AED "${nameToDelete}" ?`);
+
+ if (confirmDelete) {
+ aeds = aeds.filter(a => a !== nameToDelete);
+ selectedAed = aeds[0];
+ saveAeds();
+ saveSelectedAed();
+ renderAedDropdown();
+ showToast(`AED "${nameToDelete}" supprimé.`, 'info');
+ }
+ }
+
  function handleAddUnlistedStudent(e) {
  e.preventDefault();
  const nom = document.getElementById('new-student-nom').value.trim().toUpperCase();
@@ -951,6 +1005,11 @@ title="Retirer de l'appel">
  status: status,
  present: true
  };
+
+ if (isStudentInSession(newStudent)) {
+ showToast(`${nom} ${prenom} est déjà dans la liste d'appel !`, 'error');
+ return;
+ }
 
  studentDatabase.push(newStudent);
  saveStudentDatabase();
@@ -1082,7 +1141,7 @@ title="Retirer de l'appel">
 
  const confirmClear = confirm(`Voulez-vous vraiment effacer les ${studentDatabase.length} élève(s) enregistrés dans la base de données ?\nCette action est irréversible.`);
  
-if (confirmClear) {
+ if (confirmClear) {
  studentDatabase = [];
  saveStudentDatabase();
  hideAutocompleteDropdown();
@@ -1120,7 +1179,11 @@ if (confirmClear) {
  const requiredTitle = `PERMANENCE DE ${aedName.toUpperCase()} à ${hourFormatted}`;
 
  document.getElementById('print-title-header').textContent = requiredTitle;
- document.getElementById('print-date').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ 
+ // FORMAT LUNDI 3 NOVEMBRE 2021
+ const dateFormatted = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+ document.getElementById('print-date').textContent = dateFormatted;
+ 
  document.getElementById('print-full-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
  const total = sessionStudents.length;
@@ -1143,7 +1206,7 @@ if (confirmClear) {
  sessionStudents.forEach((s, idx) => {
  const tr = document.createElement('tr');
  
-let badgeClass = 'print-badge-perm';
+ let badgeClass = 'print-badge-perm';
  if (s.status === 'Exclusion') badgeClass = 'print-badge-excl';
  if (s.status === 'Autre') badgeClass = 'print-badge-autre';
 
@@ -1161,170 +1224,6 @@ let badgeClass = 'print-badge-perm';
  setTimeout(() => {
  window.print();
  }, 150);
- }
-
- /**
- * GENERATION PDF STYLISÉ ET PARTAGE NATIF (iOS / IPAD / MOBILE)
- */
- async function generateAndSharePDF() {
- if (!window.jspdf || !window.jspdf.jsPDF) {
- showToast('Module PDF en cours de chargement...', 'error');
- return;
- }
-
- const now = new Date();
- const hourFormatted = now.getHours().toString().padStart(2, '0') + 'h';
- const aedName = selectedAed || 'L\'AED';
- const titleHeader = `PERMANENCE DE ${aedName.toUpperCase()} à ${hourFormatted}`;
- const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
- const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
- const { jsPDF } = window.jspdf;
- const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-
- // Couleurs de la charte
- const colorPrimary = [15, 23, 42]; // Slate 900
- const colorAccent = [22, 163, 74]; // Brand Green 600
-
- // Header - Bandeau
- doc.setFillColor(...colorPrimary);
- doc.rect(0, 0, 210, 28, 'F');
-
- doc.setTextColor(255, 255, 255);
- doc.setFont('helvetica', 'bold');
- doc.setFontSize(15);
- doc.text(titleHeader, 14, 15);
-
- doc.setFont('helvetica', 'normal');
- doc.setFontSize(9);
- doc.setTextColor(203, 213, 225);
- doc.text('Vie Scolaire - Registre officiel d\'appel de la permanence', 14, 22);
-
- // Meta Data (Date & Heure)
- doc.setTextColor(51, 65, 85);
- doc.setFontSize(9);
- doc.setFont('helvetica', 'bold');
- doc.text(`Date : ${dateStr}`, 200, 15, { align: 'right' });
- doc.text(`Heure : ${timeStr}`, 200, 21, { align: 'right' });
-
- // Recapitulatifs / Stats
- const total = sessionStudents.length;
- const perm = sessionStudents.filter(s => s.status === 'Permanence').length;
- const excl = sessionStudents.filter(s => s.status === 'Exclusion').length;
- const autre = sessionStudents.filter(s => s.status === 'Autre').length;
-
- doc.setFillColor(248, 250, 252);
- doc.roundedRect(14, 33, 182, 14, 2, 2, 'F');
- doc.setDrawColor(226, 232, 240);
- doc.roundedRect(14, 33, 182, 14, 2, 2, 'D');
-
- doc.setFontSize(8.5);
- doc.setTextColor(30, 41, 59);
- doc.text(`Effectif présent : ${total}`, 20, 41.5);
- doc.text(`Permanence : ${perm}`, 70, 41.5);
- doc.text(`Exclusions : ${excl}`, 115, 41.5);
- doc.text(`Autres : ${autre}`, 160, 41.5);
-
- // Preparation du tableau
- const tableBody = sessionStudents.length === 0 
- ? [["-", "Aucun élève enregistré lors de cet appel", "-", "-", "-"]]
- : sessionStudents.map((s, idx) => [
- idx + 1,
- `${s.nom.toUpperCase()} ${s.prenom}`,
- s.classe,
- s.status.toUpperCase(),
- "PRÉSENT"
- ]);
-
- doc.autoTable({
- startY: 52,
- head: [['N°', 'NOM PRÉNOM', 'CLASSE', 'MOTIF / STATUT', 'PRÉSENCE']],
- body: tableBody,
- theme: 'grid',
- headStyles: {
- fillColor: [15, 23, 42],
- textColor: [255, 255, 255],
- fontStyle: 'bold',
- fontSize: 9,
- halign: 'left'
- },
- bodyStyles: {
- fontSize: 9,
- textColor: [30, 41, 59]
- },
- columnStyles: {
- 0: { cellWidth: 12, halign: 'center' },
- 1: { cellWidth: 80, fontStyle: 'bold' },
- 2: { cellWidth: 25, fontStyle: 'bold' },
- 3: { cellWidth: 40 },
- 4: { cellWidth: 25, halign: 'center', fontStyle: 'bold' }
- },
- didParseCell: function(data) {
- if (data.section === 'body' && data.column.index === 3) {
- const val = data.cell.raw;
- if (val === 'EXCLUSION') {
- data.cell.styles.textColor = [159, 18, 57];
- data.cell.styles.fontStyle = 'bold';
- } else if (val === 'AUTRE') {
- data.cell.styles.textColor = [146, 64, 14];
- data.cell.styles.fontStyle = 'bold';
- } else {
- data.cell.styles.textColor = [22, 101, 52];
- }
- }
- }
- });
-
- // Zone de signatures en bas de page
- const finalY = doc.lastAutoTable.finalY + 15;
- const pageHeight = doc.internal.pageSize.height;
- const signY = finalY > pageHeight - 40 ? pageHeight - 35 : finalY;
-
- doc.setFontSize(9);
- doc.setFont('helvetica', 'bold');
- doc.setTextColor(15, 23, 42);
- doc.text("Signature de l'AED responsable :", 14, signY);
- doc.setFont('helvetica', 'normal');
- doc.text(aedName, 14, signY + 12);
- doc.setLineDash([1, 1], 0);
- doc.line(14, signY + 14, 85, signY + 14);
-
- doc.setFont('helvetica', 'bold');
- doc.text("Visa du CPE / Direction :", 125, signY);
- doc.line(125, signY + 14, 196, signY + 14);
-
- // Generation du Blob PDF
- const pdfArrayBuffer = doc.output('arraybuffer');
- const pdfBlob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
- const fileName = `Feuille_Appel_${aedName.replace(/\s+/g, '_')}_${hourFormatted}.pdf`;
-
- // PARTAGE NATIF iOS (Web Share API) OU TELECHARGEMENT
- const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
- if (navigator.canShare && navigator.canShare({ files: [file] })) {
- try {
- await navigator.share({
- files: [file],
- title: titleHeader,
- text: `Feuille d'appel de permanence - ${aedName} (${dateStr})`
- });
- showToast('Partagé avec succès !', 'success');
- } catch (err) {
- if (err.name !== 'AbortError') {
- console.error('Erreur de partage :', err);
- doc.save(fileName);
- }
- }
- } else {
- // Fallback : Téléchargement direct si le partage de fichier n'est pas supporté par le navigateur
- const blobUrl = URL.createObjectURL(pdfBlob);
- const link = document.createElement('a');
- link.href = blobUrl;
- link.download = fileName;
- link.click();
- URL.revokeObjectURL(blobUrl);
- showToast('PDF téléchargé avec succès', 'success');
- }
  }
 
  function capitalizeFirstLetter(str) {
