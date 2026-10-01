@@ -3,7 +3,7 @@
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
- <title>Permanence - Appel Multi-Écran</title>
+ <title>Permanence</title>
  <link rel="apple-touch-icon" href="./Logo.png">
  
  <!-- Tailwind CSS -->
@@ -159,8 +159,8 @@
  </div>
  </div>
 
- <!-- AED Selection Controls -->
- <div class="flex items-center gap-2 bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700/80 w-full sm:w-auto justify-between sm:justify-start">
+ <!-- AED Selection Controls & History Button -->
+ <div class="flex items-center gap-2 bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700/80 w-full sm:w-auto justify-between sm:justify-start flex-wrap">
  <div class="flex items-center gap-2 px-2 text-slate-300">
  <i data-lucide="user-check" class="w-4 h-4 text-brand-500"></i>
  <span class="text-xs font-bold uppercase tracking-wider">AED :</span>
@@ -178,6 +178,12 @@
  <button onclick="openModal('modal-aed')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm hover:shadow-slate-700/50 touch-btn" title="Ajouter un nouvel AED">
  <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
  <span>+ AED</span>
+ </button>
+
+ <!-- BOUTON ACCÉDER À L'HISTORIQUE DES LISTES -->
+ <button onclick="openHistoryModal()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition shadow-md touch-btn ml-auto sm:ml-2">
+ <i data-lucide="history" class="w-4 h-4"></i>
+ <span>Historique</span>
  </button>
  </div>
  </div>
@@ -343,9 +349,9 @@
 
  <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
  <!-- Reset Current Session List -->
- <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider la liste d'appel actuelle">
+ <button onclick="resetCurrentSession()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition touch-btn" title="Vider et sauvegarder la liste d'appel actuelle">
  <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
- <span class="hidden sm:inline">Vider</span>
+ <span class="hidden sm:inline">Vider (avec sauvegarde)</span>
  </button>
 
  <!-- PRINT BUTTON (NATIVE A4 PORTRAIT) -->
@@ -456,6 +462,46 @@
  </div>
  </div>
 
+ <!-- MODAL: HISTORIQUE DES LISTES SAUVEGARDÉES -->
+ <div id="modal-history" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 no-print">
+ <div class="bg-white rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+ 
+ <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
+ <div class="flex items-center gap-2">
+ <i data-lucide="history" class="w-5 h-5 text-brand-500"></i>
+ <h3 class="font-bold text-base">Historique des Listes de Permanence</h3>
+ </div>
+ <button onclick="closeModal('modal-history')" class="text-slate-400 hover:text-white touch-target">
+ <i data-lucide="x" class="w-5 h-5"></i>
+ </button>
+ </div>
+
+ <div class="p-4 bg-slate-50 border-b border-slate-200 space-y-3 shrink-0">
+ <!-- BULLE DE RECHERCHE DANS L'HISTORIQUE -->
+ <div class="relative w-full">
+ <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+ <i data-lucide="search" class="w-4 h-4"></i>
+ </div>
+ <input type="text" id="history-search-input" oninput="filterHistoryList()" placeholder="Rechercher par date, heure, AED, élève ou classe..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm">
+ </div>
+ <div class="flex justify-between items-center text-xs text-slate-500 px-1 font-medium">
+ <span id="history-count-text">0 liste(s) archivée(s)</span>
+ <button onclick="clearAllHistory()" class="text-rose-600 hover:underline font-bold">Vider tout l'historique</button>
+ </div>
+ </div>
+
+ <div id="history-list-container" class="p-4 overflow-y-auto space-y-3 flex-1">
+ <!-- Dynamically populated history cards -->
+ </div>
+
+ <div class="p-4 border-t border-slate-100 flex justify-end shrink-0 bg-white">
+ <button onclick="closeModal('modal-history')" class="px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 touch-btn">
+ Fermer
+ </button>
+ </div>
+ </div>
+ </div>
+
  <!-- PRINT ONLY CONTAINER (A4 FORMAT PORTRAIT STRICT) -->
  <div id="print-zone" class="print-only print-container p-2">
  
@@ -523,12 +569,14 @@
  const STORAGE_SELECTED_AED = 'perm_app_selected_aed_v4';
  const STORAGE_DATABASE = 'perm_app_students_db_v4';
  const STORAGE_SESSION = 'perm_app_current_session_v4';
+ const STORAGE_HISTORY = 'perm_app_history_v4';
 
  /* APPLICATION STATE */
  let aeds = [];
  let selectedAed = '';
  let studentDatabase = [];
  let sessionStudents = [];
+ let historyList = [];
  
  let searchMatches = [];
  let selectedDropdownIndex = -1;
@@ -609,6 +657,13 @@
  } else {
  sessionStudents = [];
  }
+
+ const storedHistory = localStorage.getItem(STORAGE_HISTORY);
+ if (storedHistory) {
+ historyList = JSON.parse(storedHistory);
+ } else {
+ historyList = [];
+ }
  }
 
  function saveAeds() {
@@ -626,6 +681,10 @@
 
  function saveSessionStudents() {
  localStorage.setItem(STORAGE_SESSION, JSON.stringify(sessionStudents));
+ }
+
+ function saveHistory() {
+ localStorage.setItem(STORAGE_HISTORY, JSON.stringify(historyList));
  }
 
  function updateDbCountBadge() {
@@ -1171,13 +1230,194 @@
  }
  }
 
- function resetCurrentSession() {
+ /* SAUVEGARDE DE LA LISTE DANS L'HISTORIQUE */
+ function saveCurrentListToHistory() {
  if (sessionStudents.length === 0) return;
+
+ const now = new Date();
+ const dateFormatted = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+ const timeFormatted = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+ const hourFormatted = now.getHours().toString().padStart(2, '0') + 'h';
+
+ const historyEntry = {
+ id: 'hist_' + Date.now(),
+ timestamp: Date.now(),
+ dateStr: dateFormatted,
+ timeStr: timeFormatted,
+ hourStr: hourFormatted,
+ aed: selectedAed || 'AED Général',
+ students: JSON.parse(JSON.stringify(sessionStudents))
+ };
+
+ historyList.unshift(historyEntry);
+ saveHistory();
+ }
+
+ function resetCurrentSession() {
+ if (sessionStudents.length === 0) {
+ showToast('La liste est déjà vide.', 'info');
+ return;
+ }
+
+ const confirmReset = confirm('Voulez-vous vider la liste actuelle ? Elle sera automatiquement archivée dans l\'historique.');
+ if (!confirmReset) return;
+
+ saveCurrentListToHistory();
+
  sessionStudents = [];
  saveSessionStudents();
  renderSessionList();
  updateStats();
- showToast('L\'appel a été réinitialisé', 'info');
+ showToast('Liste sauvegardée dans l\'historique et réinitialisée !', 'success');
+ }
+
+ function openHistoryModal() {
+ document.getElementById('history-search-input').value = '';
+ renderHistoryList();
+ openModal('modal-history');
+ }
+
+ function filterHistoryList() {
+ renderHistoryList();
+ }
+
+ function renderHistoryList() {
+ const container = document.getElementById('history-list-container');
+ const countText = document.getElementById('history-count-text');
+ const query = (document.getElementById('history-search-input').value || '').trim().toLowerCase();
+
+ container.innerHTML = '';
+
+ let filtered = historyList;
+ if (query) {
+ filtered = historyList.filter(item => {
+ const fullText = `${item.dateStr} ${item.timeStr} ${item.aed} ` + 
+ item.students.map(s => `${s.nom} ${s.prenom} ${s.classe} ${s.status}`).join(' ');
+ return fullText.toLowerCase().includes(query);
+ });
+ }
+
+ countText.textContent = `${filtered.length} / ${historyList.length} liste(s) trouvée(s)`;
+
+ if (filtered.length === 0) {
+ container.innerHTML = `
+ <div class="text-center py-10 text-slate-400 text-sm">
+ <i data-lucide="folder-open" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+ Aucun historique trouvé.
+ </div>
+ `;
+ lucide.createIcons();
+ return;
+ }
+
+ filtered.forEach(item => {
+ const card = document.createElement('div');
+ card.className = 'bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition space-y-3';
+
+ const total = item.students.length;
+ const perm = item.students.filter(s => s.status === 'Permanence').length;
+ const excl = item.students.filter(s => s.status === 'Exclusion').length;
+ const autre = item.students.filter(s => s.status === 'Autre').length;
+
+ const studentTags = item.students.map(s => 
+ `<span class="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+ <strong class="uppercase">${escapeHtml(s.nom)}</strong> ${escapeHtml(s.prenom)} (${escapeHtml(s.classe)})
+ </span>`
+ ).join(' ');
+
+ card.innerHTML = `
+ <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+ <div>
+ <div class="flex items-center gap-2">
+ <span class="text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded-md uppercase tracking-wide">
+ ${escapeHtml(item.dateStr)}
+ </span>
+ <span class="text-xs font-bold bg-brand-100 text-brand-800 px-2 py-0.5 rounded-md border border-brand-200">
+ ${escapeHtml(item.timeStr)} (${escapeHtml(item.hourStr)})
+ </span>
+ </div>
+ <p class="text-xs text-slate-500 font-semibold mt-1">AED Responsable : <strong class="text-slate-800">${escapeHtml(item.aed)}</strong></p>
+ </div>
+
+ <div class="flex items-center gap-1.5">
+ <button onclick="reprintHistoryItem('${item.id}')" class="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-sm touch-btn" title="Réimprimer cette liste">
+ <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+ <span>Réimprimer</span>
+ </button>
+ <button onclick="restoreHistoryItem('${item.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition touch-btn" title="Charger dans la feuille d'appel">
+ <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+ <span>Charger</span>
+ </button>
+ <button onclick="deleteHistoryItem('${item.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition touch-target" title="Supprimer de l'historique">
+ <i data-lucide="trash-2" class="w-4 h-4"></i>
+ </button>
+ </div>
+ </div>
+
+ <div class="flex gap-4 text-[11px] font-bold text-slate-600">
+ <span>Total: <strong>${total}</strong></span>
+ <span class="text-emerald-700">Permanence: <strong>${perm}</strong></span>
+ <span class="text-rose-700">Exclusions: <strong>${excl}</strong></span>
+ <span class="text-amber-700">Autres: <strong>${autre}</strong></span>
+ </div>
+
+ <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto pt-1">
+ ${studentTags}
+ </div>
+ `;
+
+ container.appendChild(card);
+ });
+
+ lucide.createIcons();
+ }
+
+ function reprintHistoryItem(historyId) {
+ const item = historyList.find(h => h.id === historyId);
+ if (!item) return;
+
+ triggerPrintCustom(item.aed, item.dateStr, item.timeStr, item.hourStr, item.students);
+ }
+
+ function restoreHistoryItem(historyId) {
+ const item = historyList.find(h => h.id === historyId);
+ if (!item) return;
+
+ if (sessionStudents.length > 0) {
+ const confirmOverwrite = confirm('Remplacer la liste courante par cette liste archivée ? (La liste courante actuelle sera automatiquement sauvegardée)');
+ if (!confirmOverwrite) return;
+ saveCurrentListToHistory();
+ }
+
+ sessionStudents = JSON.parse(JSON.stringify(item.students));
+ selectedAed = item.aed;
+ saveSelectedAed();
+ saveSessionStudents();
+
+ renderAedDropdown();
+ renderSessionList();
+ updateStats();
+ closeModal('modal-history');
+ showToast(`Liste du ${item.dateStr} à ${item.timeStr} chargée !`, 'success');
+ }
+
+ function deleteHistoryItem(historyId) {
+ if (!confirm('Supprimer définitivement cette fiche de l\'historique ?')) return;
+
+ historyList = historyList.filter(h => h.id !== historyId);
+ saveHistory();
+ renderHistoryList();
+ showToast('Fiche d\'historique supprimée', 'info');
+ }
+
+ function clearAllHistory() {
+ if (historyList.length === 0) return;
+ if (!confirm('Voulez-vous vraiment EFFACER TOUT l\'historique sauvegardé ?')) return;
+
+ historyList = [];
+ saveHistory();
+ renderHistoryList();
+ showToast('Historique intégralement vidé', 'error');
  }
 
  function updateStats() {
@@ -1194,24 +1434,24 @@
 
  function triggerPrint() {
  const now = new Date();
- const currentHourNum = now.getHours();
- const hourFormatted = currentHourNum.toString().padStart(2, '0') + 'h';
- const aedName = selectedAed || 'L\'AED';
+ const dateFormatted = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+ const fullTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+ const hourFormatted = now.getHours().toString().padStart(2, '0') + 'h';
 
- const requiredTitle = `PERMANENCE DE ${aedName.toUpperCase()} à ${hourFormatted}`;
+ triggerPrintCustom(selectedAed || 'L\'AED', dateFormatted, fullTime, hourFormatted, sessionStudents);
+ }
+
+ function triggerPrintCustom(aedName, dateStr, timeStr, hourStr, students) {
+ const requiredTitle = `PERMANENCE DE ${(aedName || 'AED').toUpperCase()} à ${hourStr}`;
 
  document.getElementById('print-title-header').textContent = requiredTitle;
- 
- // FORMAT LUNDI 3 NOVEMBRE 2021
- const dateFormatted = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
- document.getElementById('print-date').textContent = dateFormatted;
- 
- document.getElementById('print-full-time').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+ document.getElementById('print-date').textContent = dateStr;
+ document.getElementById('print-full-time').textContent = timeStr;
 
- const total = sessionStudents.length;
- const perm = sessionStudents.filter(s => s.status === 'Permanence').length;
- const excl = sessionStudents.filter(s => s.status === 'Exclusion').length;
- const autre = sessionStudents.filter(s => s.status === 'Autre').length;
+ const total = students.length;
+ const perm = students.filter(s => s.status === 'Permanence').length;
+ const excl = students.filter(s => s.status === 'Exclusion').length;
+ const autre = students.filter(s => s.status === 'Autre').length;
 
  document.getElementById('print-stat-total').textContent = total;
  document.getElementById('print-stat-perm').textContent = perm;
@@ -1222,10 +1462,10 @@
  const printTbody = document.getElementById('print-table-body');
  printTbody.innerHTML = '';
 
- if (sessionStudents.length === 0) {
+ if (students.length === 0) {
  printTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 25px; color:#64748b;">Aucun élève enregistré lors de cet appel.</td></tr>`;
  } else {
- sessionStudents.forEach((s, idx) => {
+ students.forEach((s, idx) => {
  const tr = document.createElement('tr');
  
  let badgeClass = 'print-badge-perm';
